@@ -1,0 +1,10 @@
+# Arquivos gerados na compilação
+build/
+*.o
+*.d
+pawpocalypse
+pawpocalypse.exe
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
