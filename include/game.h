@@ -6,9 +6,14 @@
  * janela sem suavização (visual pixelado). */
 
 #include "raylib.h"
+#include "audio.h"
+#include "partida.h"
+#include "save.h"
 
 typedef enum EstadoJogo {
     ESTADO_MENU,        // tela inicial
+    ESTADO_SAVES,       // escolha de um dos 3 saves
+    ESTADO_FASES,       // as 5 fases do save escolhido
     ESTADO_INSTRUCOES,  // como jogar
     ESTADO_JOGANDO,     // partida em andamento
     ESTADO_PAUSA,       // partida pausada
@@ -16,10 +21,15 @@ typedef enum EstadoJogo {
 } EstadoJogo;
 
 typedef struct Jogo {
-    EstadoJogo      estado;  // tela atual
-    RenderTexture2D tela;    // tela virtual onde tudo é desenhado
-    Vector2         mouse;   // mouse em coordenadas da tela virtual
-    float           tempo;   // segundos desde a abertura (animações)
+    EstadoJogo      estado;              // tela atual
+    RenderTexture2D tela;                // tela virtual onde tudo é desenhado
+    Vector2         mouse;               // mouse em coordenadas da tela virtual
+    float           tempo;               // segundos desde a abertura (animações)
+    Audio           audio;               // música de fundo
+    Save            saves[TOTAL_SAVES];  // os 3 saves lidos do arquivo
+    int             saveAtual;           // save em uso (-1 = nenhum)
+    int             saveParaApagar;      // save esperando confirmação (-1 = nenhum)
+    Partida        *partida;             // partida em andamento (NULL fora dela)
 } Jogo;
 
 Jogo *jogo_criar(void);                 // aloca e prepara o jogo (depois de InitWindow)

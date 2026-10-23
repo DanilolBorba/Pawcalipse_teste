@@ -5,6 +5,9 @@ build/
 pawpocalypse
 pawpocalypse.exe
 
+# Saves de cada jogador (criados ao jogar)
+assets/data/saves.txt
+
 # Sistema operacional
 .DS_Store
 Thumbs.db

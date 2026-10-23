@@ -4,7 +4,7 @@
 /* config.h - Constantes gerais, compartilhadas por todos os módulos. */
 
 #define TITULO_JOGO      "PawPocalypse"
-#define VERSAO_JOGO      "v0.1 - Etapa 1"
+#define VERSAO_JOGO      "v0.2 - Etapa 2"
 
 #define LARGURA_VIRTUAL  640    // resolução interna onde tudo é desenhado
 #define ALTURA_VIRTUAL   360

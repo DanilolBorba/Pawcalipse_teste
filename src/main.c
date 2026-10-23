@@ -6,13 +6,16 @@
 #include "game.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
-/* main: abre a janela (redimensionável, 60 FPS), desliga o "ESC fecha o
- * jogo" da raylib (aqui o ESC pausa), muda a pasta de trabalho para a do
- * executável (para achar assets/) e roda o loop principal até o jogador
- * sair ou fechar a janela. */
+/* main: inicia o gerador aleatório, abre a janela (redimensionável, 60 FPS),
+ * desliga o "ESC fecha o jogo" da raylib (aqui o ESC pausa), muda a pasta de
+ * trabalho para a do executável (para achar assets/) e roda o loop principal
+ * até o jogador sair ou fechar a janela. */
 int main(void)
 {
+    srand((unsigned int)time(NULL));
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(LARGURA_JANELA, ALTURA_JANELA, TITULO_JOGO);
     SetWindowMinSize(LARGURA_VIRTUAL, ALTURA_VIRTUAL);
