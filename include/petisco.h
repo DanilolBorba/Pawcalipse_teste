@@ -23,6 +23,7 @@ bool petisco_adicionar(Petisco **lista, Vector2 posicao, float alvoY);  // novo 
 void petisco_atualizar_lista(Petisco **lista, float dt);                // faz cair e remove os que passaram do tempo
 int  petisco_coletar(Petisco **lista, Vector2 ponto);                   // remove o petisco clicado; retorna o valor (0 se nenhum)
 void petisco_desenhar_lista(const Petisco *lista, float tempo);         // desenha todos os petiscos
+void petisco_desenhar_biscoito(Vector2 centro, int escala);             // o biscoito em pixel-art (também usado no contador)
 void petisco_liberar_lista(Petisco **lista);                            // libera todos os nós e deixa a lista vazia
 
 #endif

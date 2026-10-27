@@ -6,7 +6,43 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define RAIO_CLIQUE 13.0f
+#define RAIO_CLIQUE       13.0f
+#define LARGURA_BISCOITO  15
+#define ALTURA_BISCOITO   9
+#define TAMANHO_ESTRELA   9
+
+/* Figuras em pixel-art (matrizes de caracteres), nas cores do gerador_petiscos. */
+static const char *BISCOITO[ALTURA_BISCOITO] = {
+    ".##.........##.",
+    "#aa#.......#aa#",
+    "#aaa#######aaa#",
+    ".#aaaaoaaaaaa#.",
+    ".#aaaaaaaaoab#.",
+    ".#bbbbbbbbbbb#.",
+    "#aab#######aab#",
+    "#bb#.......#bb#",
+    ".##.........##.",
+};
+static const char *ESTRELA[TAMANHO_ESTRELA] = {
+    "....#....",
+    "...#y#...",
+    "...#y#...",
+    ".##ywy##.",
+    "#yywwwyy#",
+    ".##ywy##.",
+    "...#y#...",
+    "...#y#...",
+    "....#....",
+};
+static const char SIMBOLOS[] = "#aboyw";
+static const Color CORES[] = {
+    {   0,   0,   0, 255 },   // # contorno
+    { 238, 195, 154, 255 },   // a biscoito
+    { 217, 160, 102, 255 },   // b sombra do biscoito
+    { 143,  86,  59, 255 },   // o manchinhas
+    { 251, 242,  54, 255 },   // y estrela
+    { 255, 222, 191, 255 },   // w brilho da estrela
+};
 
 /* petisco_adicionar: aloca um petisco com malloc na posição dada (ele vai
  * cair até a altura alvoY) e o insere no INÍCIO da lista: o novo nó aponta
@@ -64,14 +100,28 @@ int petisco_coletar(Petisco **lista, Vector2 ponto)
     return 0;
 }
 
-/* petisco_desenhar_lista: desenha cada petisco como um osso com brilho
- * laranja. Nos últimos 2,5 segundos antes de sumir, ele pisca. */
+/* petisco_desenhar_biscoito: desenha o biscoito em forma de osso centrado
+ * em 'centro', com cada pixel ampliado 'escala' vezes. */
+void petisco_desenhar_biscoito(Vector2 centro, int escala)
+{
+    Vector2 canto = { centro.x - LARGURA_BISCOITO * escala / 2, centro.y - ALTURA_BISCOITO * escala / 2 };
+    ui_desenhar_pixel_art(BISCOITO, ALTURA_BISCOITO, canto, escala, SIMBOLOS, CORES);
+}
+
+/* petisco_desenhar_lista: desenha cada petisco como o biscoito (com sombra
+ * depois que pousa) e, de vez em quando, a estrelinha brilhando na ponta,
+ * como no sprite do gerador. Nos últimos 2,5 segundos antes de sumir, ele
+ * pisca. */
 void petisco_desenhar_lista(const Petisco *lista, float tempo)
 {
     for (const Petisco *p = lista; p != NULL; p = p->proximo) {
         if (p->tempoNoChao > DURACAO_NO_CHAO - 2.5f && fmodf(tempo, 0.25f) < 0.12f) continue;
-        DrawCircleV(p->posicao, 11, Fade(COR_PETISCO, 0.3f));
-        ui_desenhar_osso(p->posicao, 1.0f, COR_OSSO);
+
+        if (p->posicao.y >= p->alvoY) DrawEllipse(p->posicao.x, p->posicao.y + 6, 8, 2, Fade(BLACK, 0.3f));
+        petisco_desenhar_biscoito(p->posicao, 1);
+        if (fmodf(tempo + p->alvoY * 0.01f, 1.2f) < 0.3f) {
+            ui_desenhar_pixel_art(ESTRELA, TAMANHO_ESTRELA, (Vector2){ p->posicao.x + 3, p->posicao.y - 12 }, 1, SIMBOLOS, CORES);
+        }
     }
 }
 

@@ -1,0 +1,28 @@
+GATO ZUMBI - CAMINHADA (8 frames, 64x64, fundo transparente)
+
+ARQUIVOS
+  gato_zumbi_padrao_andar_spritesheet.png   512x64: 8 quadros de 64x64 lado a lado, sem espacamento (grade 64x64)
+  gato_zumbi_padrao_andar_spritesheet.json  posicao e duracao de cada quadro (formato "array" do Aseprite)
+  frames/gato_zumbi_padrao_andar_01..08.png quadros individuais 64x64 RGBA
+  gato_zumbi_padrao_andar.gif               tamanho real, loop infinito, fundo transparente
+  gato_zumbi_padrao_andar_preview_8x.gif    ampliado 8x sem suavizacao, so para visualizar
+  gato_zumbi_padrao_andar.aseprite          8 frames + duracoes + tag "andar", com a paleta original
+
+TEMPO
+  Frame:  1    2    3    4    5    6    7    8
+  ms:    160  140  140  200  180  140  140  160    -> ciclo de 1,26 s
+  O frame 1 e a sprite original. Os frames 4 (mancada) e 5 (tranco da cabeca) ficam mais tempo.
+  Se a engine usar fps fixo: 7 fps.
+
+DESLOCAMENTO NO JOGO (para as patas nao "patinarem")
+  A animacao anda no lugar. O gato avanca 4 px por ciclo = cerca de 3,2 px/s em escala 1x
+  (multiplique pela escala de exibicao; em 2x = 6,3 px/s).
+  Opcao mais fiel: mover 1 px ao sair dos frames 1, 3, 5 e 7 e ficar parado nos outros
+  (e o tranco zumbi). Esses valores tambem estao no JSON, em meta.deslocamento.
+  Os pes apoiados tocam o chao na linha y = 58; origem sugerida: (32, 58).
+
+IMPORTACAO
+  Godot:  AnimatedSprite2D > SpriteFrames > adicionar quadros da spritesheet, grade 8 x 1;
+          Texture Filter = Nearest.
+  Unity:  Sprite Mode = Multiple, Slice por Cell Size 64x64, Filter Mode = Point, Compression = None.
+  Aseprite: abra o .aseprite direto (a tag "andar" ja define o loop).

@@ -1,0 +1,32 @@
+GERADOR DE PETISCOS - ACUMULO E GERACAO (11 frames, 64x64, fundo transparente)
+
+ARQUIVOS
+  gerador_petiscos_spritesheet.png    704x64: 11 quadros de 64x64 lado a lado, sem espacamento (grade 64x64)
+  gerador_petiscos_spritesheet.json   posicao e duracao de cada quadro, tags e o frame em que o recurso nasce
+  frames/gerador_petiscos_01..11.png  quadros individuais 64x64 RGBA
+  gerador_petiscos.gif                tamanho real, loop infinito, fundo transparente
+  gerador_petiscos_preview_8x.gif     ampliado 8x sem suavizacao, so para visualizar
+  gerador_petiscos.aseprite           11 frames + duracoes + tags, com a paleta original
+
+TEMPO
+  Frame:  1    2    3    4    5    6    7    8    9    10   11
+  ms:    300  140  140  120  120  100  100   80  160  100  120    -> ciclo de 1,48 s
+  Tags (numeracao a partir de 1):
+    repouso   frame 1        o gerador parado (e a sprite original)
+    acumular  frames 2 a 7   o saco treme, o monte cresce, a plaquinha acende
+    gerar     frames 8 a 11  o saco despeja, a estrela aparece e tudo volta ao normal
+  O RECURSO NASCE NO FRAME 9 (a estrela grande). Crie o petisco coletavel nesse momento.
+
+COMO SINCRONIZAR COM O TIMER DO JOGO
+  Se o gerador produz a cada N segundos:
+    - fique no frame 1 (repouso) enquanto faltar mais de 1,18 s para produzir;
+    - quando faltar 1,18 s, toque os frames 2 a 11 uma vez (somam 1180 ms);
+    - ao chegar no frame 9, gere o recurso; depois do 11, volte ao frame 1.
+  Se preferir, toque o ciclo inteiro em loop: ele produz a cada 1,48 s.
+  Ancora sugerida: centro da base da tigela, em (23, 62).
+
+IMPORTACAO
+  Godot:  AnimatedSprite2D > SpriteFrames > adicionar quadros da spritesheet, grade 11 x 1;
+          Texture Filter = Nearest.
+  Unity:  Sprite Mode = Multiple, Slice por Cell Size 64x64, Filter Mode = Point, Compression = None.
+  C (raylib/SDL): o quadro i fica em x = i * 64 na spritesheet; use filtro "nearest/point".

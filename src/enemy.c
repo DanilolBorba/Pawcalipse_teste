@@ -7,14 +7,19 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define ALCANCE_MORDIDA  10.0f   // distância do centro do gato até o ponto que ele morde
-#define TEMPO_PISCANDO   0.12f
+#define ALCANCE_MORDIDA     14.0f   // distância do centro do gato até o ponto que ele morde
+#define TEMPO_COR_DANO      0.12f
+#define VELOCIDADE_DA_ARTE  3.2f    // px/s que a animação de andar "anda" (ver o LEIAME dos sprites)
 
 static const InfoGato infos[TOTAL_TIPOS_GATO] = {
-    /*                nome              vida  velocidade  mordida */
-    [GATO_COMUM]  = { "Gato Zumbi",      200,  12.0f,      100 },
-    [GATO_CONE]   = { "Gato de Cone",    560,  12.0f,      100 },
-    [GATO_PANELA] = { "Gato de Panela", 1300,  12.0f,      100 },
+    /*                     nome              vida  velocidade mordida  imuneGelo  pula  escala  sprite              tinta */
+    [GATO_PADRAO]     = { "Gato Zumbi",       200,   8.0f,     100,    false,     false, 1.00f, SPRITE_GATO_PADRAO, { 255, 255, 255, 255 } },
+    [GATO_CAIXA]      = { "Gato da Caixa",    560,   8.0f,     100,    false,     false, 1.00f, SPRITE_GATO_CAIXA,  { 255, 255, 255, 255 } },
+    [GATO_LATA]       = { "Gato da Lata",    1300,   8.0f,     100,    false,     false, 1.00f, SPRITE_GATO_LATA,   { 255, 255, 255, 255 } },
+    [GATO_SIAMES]     = { "Siamês",           180,  16.0f,     100,    false,     false, 1.00f, SPRITE_GATO_PADRAO, { 245, 220, 175, 255 } },
+    [GATO_PERSA]      = { "Persa",            450,   7.0f,     100,    true,      false, 1.15f, SPRITE_GATO_PADRAO, { 235, 235, 250, 255 } },
+    [GATO_TELHADO]    = { "Gato de Telhado",  250,   9.0f,     100,    false,     true,  1.00f, SPRITE_GATO_PADRAO, { 165, 165, 180, 255 } },
+    [GATO_MAINE_COON] = { "Maine Coon",      3000,   5.0f,     300,    false,     false, 1.50f, SPRITE_GATO_PADRAO, { 205, 145,  95, 255 } },
 };
 
 /* gato_info: retorna um ponteiro para os dados fixos do tipo na tabela. */
@@ -31,12 +36,11 @@ bool gato_adicionar(Gato **lista, TipoGato tipo, int linha)
     Gato *novo = malloc(sizeof(Gato));
     if (novo == NULL) return false;
 
+    *novo = (Gato){ 0 };
     novo->tipo = tipo;
     novo->linha = linha;
-    novo->x = LARGURA_VIRTUAL + RAIO_GATO;
+    novo->x = LARGURA_VIRTUAL + RAIO_GATO * infos[tipo].escala;
     novo->vida = infos[tipo].vidaMaxima;
-    novo->timerMordida = 0.0f;
-    novo->timerDano = 0.0f;
     novo->proximo = *lista;
     *lista = novo;
     return true;
@@ -56,24 +60,35 @@ static void remover_no(Gato **ligacao)
 static Cachorro *cachorro_a_frente(const Gato *gato, Mapa *mapa)
 {
     int linha, coluna;
-    Vector2 boca = { gato->x - ALCANCE_MORDIDA, mapa_centro_celula(gato->linha, 0).y };
+    Vector2 boca = { gato->x - ALCANCE_MORDIDA * infos[gato->tipo].escala, mapa_centro_celula(gato->linha, 0).y };
     if (!mapa_celula_no_ponto(boca, &linha, &coluna)) return NULL;
     return mapa->grade[linha][coluna];
 }
 
-/* mover_ou_morder: com o caminho livre, o gato anda para a esquerda. Com um
- * cachorro na frente, ele para e morde a cada INTERVALO_MORDIDA segundos; o
- * cachorro que fica sem vida é removido do mapa (e liberado). */
+/* mover_ou_morder: com o caminho livre, o gato anda para a esquerda e avança
+ * a animação no mesmo ritmo (para as patas não deslizarem). Com um cachorro
+ * na frente, o Gato de Telhado tenta pular uma vez (o Bulldog é alto demais);
+ * os outros param e mordem a cada INTERVALO_MORDIDA segundos, e o cachorro
+ * que fica sem vida é removido do mapa. Lento pelo gelo, tudo vai à metade. */
 static void mover_ou_morder(Gato *gato, Mapa *mapa, float dt)
 {
     const InfoGato *info = &infos[gato->tipo];
+    float passo = (gato->timerLento > 0.0f) ? dt * 0.5f : dt;
     Cachorro *alvo = cachorro_a_frente(gato, mapa);
+
+    gato->mordendo = (alvo != NULL);
     if (alvo == NULL) {
-        gato->x -= info->velocidade * dt;
+        gato->x -= info->velocidade * passo;
+        gato->animacao += info->velocidade * passo / VELOCIDADE_DA_ARTE;
+        return;
+    }
+    if (info->pula && !gato->pulou) {
+        gato->pulou = true;
+        if (alvo->tipo != TIPO_BULLDOG) gato->x -= TAMANHO_CELULA;
         return;
     }
 
-    gato->timerMordida -= dt;
+    gato->timerMordida -= passo;
     if (gato->timerMordida > 0.0f) return;
 
     gato->timerMordida = INTERVALO_MORDIDA;
@@ -82,8 +97,9 @@ static void mover_ou_morder(Gato *gato, Mapa *mapa, float dt)
 }
 
 /* gato_atualizar_lista: percorre a lista com um ponteiro para ponteiro:
- * remove os gatos sem vida e faz os outros andarem ou morderem. Retorna true
- * se algum gato passou da coluna da esquerda e entrou na casa. */
+ * remove os gatos sem vida, conta os tempos de dano e de lentidão e faz os
+ * outros andarem ou morderem. Retorna true se algum gato passou da coluna da
+ * esquerda e entrou na casa. */
 bool gato_atualizar_lista(Gato **lista, Mapa *mapa, float dt)
 {
     bool invadiu = false;
@@ -96,6 +112,7 @@ bool gato_atualizar_lista(Gato **lista, Mapa *mapa, float dt)
         }
 
         if (gato->timerDano > 0.0f) gato->timerDano -= dt;
+        if (gato->timerLento > 0.0f) gato->timerLento -= dt;
         mover_ou_morder(gato, mapa, dt);
         if (gato->x < MAPA_X) invadiu = true;
         ligacao = &gato->proximo;
@@ -118,59 +135,90 @@ bool gato_na_mira(const Gato *lista, int linha, float x)
 Gato *gato_atingido(Gato *lista, int linha, float x)
 {
     for (Gato *g = lista; g != NULL; g = g->proximo) {
-        if (g->linha == linha && g->vida > 0 && fabsf(g->x - x) < RAIO_GATO) return g;
+        if (g->linha == linha && g->vida > 0 && fabsf(g->x - x) < RAIO_GATO * infos[g->tipo].escala) return g;
     }
     return NULL;
 }
 
-/* gato_ferir: tira 'dano' da vida do gato e o faz piscar em branco. O gato
- * sem vida sai da lista na próxima atualização. */
+/* gato_ferir_area: fere com 'dano' todos os gatos vivos da linha cujo centro
+ * esteja entre xMin e xMax (mordidas e explosões). Retorna quantos foram
+ * atingidos (0 se nenhum). */
+int gato_ferir_area(Gato *lista, int linha, float xMin, float xMax, int dano)
+{
+    int atingidos = 0;
+    for (Gato *g = lista; g != NULL; g = g->proximo) {
+        if (g->linha != linha || g->vida <= 0 || g->x < xMin || g->x > xMax) continue;
+        gato_ferir(g, dano);
+        atingidos++;
+    }
+    return atingidos;
+}
+
+/* gato_ferir: tira 'dano' da vida do gato e o deixa avermelhado por um
+ * instante. O gato sem vida sai da lista na próxima atualização. */
 void gato_ferir(Gato *gato, int dano)
 {
     gato->vida -= dano;
-    gato->timerDano = TEMPO_PISCANDO;
+    gato->timerDano = TEMPO_COR_DANO;
 }
 
-/* desenhar_acessorio: desenha a proteção do gato em volta da cabeça 'cabeca':
- * o cone de veterinário (funil translúcido aberto para a frente) ou a panela
- * (com o cabo para trás). O gato comum não tem acessório. */
-static void desenhar_acessorio(TipoGato tipo, Vector2 cabeca)
+/* gato_gelar: deixa o gato lento por DURACAO_LENTIDAO segundos, a não ser
+ * que ele seja imune ao gelo (Persa). */
+void gato_gelar(Gato *gato)
 {
-    if (tipo == GATO_CONE) {
-        Vector2 ponta = { cabeca.x + 6, cabeca.y };
-        Vector2 cima = { cabeca.x - 13, cabeca.y - 15 }, baixo = { cabeca.x - 13, cabeca.y + 15 };
-        DrawTriangle(ponta, cima, baixo, Fade(RAYWHITE, 0.55f));
-        DrawTriangleLines(ponta, cima, baixo, (Color){ 150, 170, 190, 255 });
-    } else if (tipo == GATO_PANELA) {
-        DrawRectangle(cabeca.x - 11, cabeca.y - 16, 22, 9, (Color){ 150, 150, 160, 255 });
-        DrawRectangle(cabeca.x - 13, cabeca.y - 8, 26, 2, (Color){ 100, 100, 110, 255 });
-        DrawRectangle(cabeca.x + 11, cabeca.y - 14, 8, 3, (Color){ 60, 50, 50, 255 });
-    }
+    if (!infos[gato->tipo].imuneGelo) gato->timerLento = DURACAO_LENTIDAO;
 }
 
-/* desenhar_gato: desenha o gato com formas geométricas (provisório até os
- * sprites), virado para a esquerda: sombra, rabo, corpo, cabeça, orelhas,
- * olhos vermelhos e o acessório, se a vida ainda estiver acima de
- * VIDA_SEM_ACESSORIO. Ele balança conforme anda e pisca em branco ao levar
- * dano. Se estiver ferido, mostra a barra de vida. */
-static void desenhar_gato(const Gato *gato)
+/* tinta_do_gato: cor multiplicada no desenho: avermelhada logo depois de
+ * levar dano, azulada enquanto estiver lento e, senão, a tinta do tipo. */
+static Color tinta_do_gato(const Gato *gato)
 {
-    const InfoGato *info = &infos[gato->tipo];
-    Vector2 c = { gato->x, mapa_centro_celula(gato->linha, 0).y + 4 + sinf(gato->x * 0.4f) * 1.5f };
-    Vector2 cabeca = { c.x - 8, c.y - 6 };
-    Color pelo = (gato->timerDano > 0.0f) ? WHITE : (Color){ 118, 146, 98, 255 };
+    if (gato->timerDano > 0.0f) return (Color){ 255, 110, 110, 255 };
+    if (gato->timerLento > 0.0f) return ColorTint(infos[gato->tipo].tinta, (Color){ 150, 190, 255, 255 });
+    return infos[gato->tipo].tinta;
+}
 
-    DrawEllipse(c.x, c.y + 13, 15, 4, Fade(BLACK, 0.3f));
-    DrawLineEx((Vector2){ c.x + 10, c.y + 2 }, (Vector2){ c.x + 16, c.y - 12 }, 3, pelo);
-    DrawEllipse(c.x + 3, c.y + 4, 13, 8, pelo);
+/* desenhar_gato_formas: desenho provisório, usado se o PNG não existir, com
+ * os pés em 'pes': rabo, corpo, orelhas, cabeça, olhos vermelhos e, se ainda
+ * tiver, a caixa (branca) ou a lata (cinza) na cabeça. */
+static void desenhar_gato_formas(const Gato *gato, Vector2 pes, Color tinta)
+{
+    Color pelo = ColorTint((Color){ 118, 146, 98, 255 }, tinta);
+    Vector2 cabeca = { pes.x - 10, pes.y - 26 };
+
+    DrawLineEx((Vector2){ pes.x + 12, pes.y - 12 }, (Vector2){ pes.x + 18, pes.y - 26 }, 3, pelo);
+    DrawEllipse(pes.x + 3, pes.y - 10, 15, 9, pelo);
     DrawPoly((Vector2){ cabeca.x - 5, cabeca.y - 8 }, 3, 5, -90, pelo);
     DrawPoly((Vector2){ cabeca.x + 5, cabeca.y - 8 }, 3, 5, -90, pelo);
     DrawCircleV(cabeca, 9, pelo);
     DrawCircleV((Vector2){ cabeca.x - 5, cabeca.y - 1 }, 2, COR_SANGUE);
     DrawCircleV((Vector2){ cabeca.x + 2, cabeca.y - 1 }, 2, COR_SANGUE);
 
-    if (gato->vida > VIDA_SEM_ACESSORIO) desenhar_acessorio(gato->tipo, cabeca);
-    if (gato->vida < info->vidaMaxima) ui_desenhar_barra_vida((Vector2){ c.x, c.y - 26 }, 26, (float)gato->vida / info->vidaMaxima);
+    if (gato->vida <= VIDA_SEM_ACESSORIO) return;
+    if (gato->tipo == GATO_CAIXA) DrawRectangle(cabeca.x - 10, cabeca.y - 20, 20, 16, RAYWHITE);
+    if (gato->tipo == GATO_LATA)  DrawRectangle(cabeca.x - 10, cabeca.y - 16, 20, 9, GRAY);
+}
+
+/* desenhar_gato: desenha o gato com os pés perto da base da sua linha. Com o
+ * PNG carregado, usa o quadro da animação de andar (o sprite da caixa ou da
+ * lata só enquanto ele tiver o acessório); mordendo, fica no 1º quadro e dá
+ * um tranco para a frente a cada mordida. Sem o PNG, usa as formas. Ferido,
+ * mostra a barra de vida acima da cabeça. */
+static void desenhar_gato(const Gato *gato)
+{
+    const InfoGato *info = &infos[gato->tipo];
+    IdSprite sprite = (gato->vida > VIDA_SEM_ACESSORIO) ? info->sprite : SPRITE_GATO_PADRAO;
+    Vector2 pes = { gato->x, mapa_centro_celula(gato->linha, 0).y + 26 };
+    int quadro = gato->mordendo ? 0 : sprite_quadro_no_tempo(sprite, gato->animacao);
+
+    if (gato->mordendo && gato->timerMordida > INTERVALO_MORDIDA - 0.15f) pes.x -= 3;
+    DrawEllipse(pes.x, pes.y, 16 * info->escala, 4 * info->escala, Fade(BLACK, 0.3f));
+    if (sprite_existe(sprite)) sprite_desenhar(sprite, quadro, pes, info->escala, tinta_do_gato(gato));
+    else                       desenhar_gato_formas(gato, pes, tinta_do_gato(gato));
+
+    if (gato->vida < info->vidaMaxima) {
+        ui_desenhar_barra_vida((Vector2){ gato->x, pes.y - 54 * info->escala }, 26, (float)gato->vida / info->vidaMaxima);
+    }
 }
 
 /* gato_desenhar_lista: percorre a lista desenhando cada gato. */
