@@ -13,8 +13,6 @@
 #define INTERVALO_CEU    8.0f   // segundos mínimos entre petiscos do céu
 #define DURACAO_AVISO    1.6f
 #define DURACAO_EFEITO   0.35f
-#define PRIMEIRO_GATO    20.0f  // segundos até o 1º gato (provisório, até as hordas)
-#define INTERVALO_GATO   8.0f   // segundos mínimos entre gatos (provisório)
 #define PETISCOS_TESTE   100    // ganhos com a tecla ']' (atalho de teste)
 
 static const Rectangle RET_CONTADOR = { 8, 8, 56, 52 };
@@ -66,9 +64,9 @@ static void montar_deck(Partida *partida, const TipoCachorro deck[], int total)
 }
 
 /* partida_criar: aloca a partida com malloc, zera tudo e prepara o campo
- * vazio, as listas de petiscos, gatos e bolinhas vazias, o saldo inicial e
- * o deck (fixo por enquanto: o do tutorial ou o 1º deck de teste).
- * Retorna NULL se faltar memória. */
+ * vazio, as listas de petiscos, gatos e bolinhas vazias, o saldo inicial,
+ * as hordas da fase (o tutorial não tem) e o deck (fixo por enquanto: o do
+ * tutorial ou o 1º deck de teste). Retorna NULL se faltar memória. */
 Partida *partida_criar(int fase)
 {
     Partida *partida = malloc(sizeof(Partida));
@@ -82,10 +80,14 @@ Partida *partida_criar(int fase)
     partida->fase = fase;
     partida->saldo = PETISCOS_INICIAIS;
     partida->timerPetiscoCeu = (fase == FASE_TUTORIAL) ? 1.0f : 5.0f;
-    partida->timerGato = PRIMEIRO_GATO;
+    partida->resultado = PARTIDA_EM_ANDAMENTO;
 
-    if (fase == FASE_TUTORIAL) montar_deck(partida, deckTutorial, TAMANHO(deckTutorial));
-    else                       montar_deck(partida, decksTeste[0], MAX_CARTAS);
+    if (fase == FASE_TUTORIAL) {
+        montar_deck(partida, deckTutorial, TAMANHO(deckTutorial));
+    } else {
+        montar_deck(partida, decksTeste[0], MAX_CARTAS);
+        horda_iniciar(&partida->hordas, fase);
+    }
     return partida;
 }
 
@@ -167,19 +169,6 @@ static void desenhar_efeitos(const Partida *partida)
         DrawCircleV(e->centro, raio, Fade(e->cor, 0.45f * resta));
         DrawCircleLinesV(e->centro, raio, Fade(e->cor, resta));
     }
-}
-
-/* gerar_gatos_provisorio: PROVISÓRIO até as hordas (Etapa 5). A cada 8 a 12
- * segundos manda um gato por uma linha aleatória: só gatos padrão no 1º
- * minuto e, depois, qualquer um dos tipos. */
-static void gerar_gatos_provisorio(Partida *partida, float dt)
-{
-    partida->timerGato -= dt;
-    if (partida->timerGato > 0.0f) return;
-
-    TipoGato tipo = (partida->tempoJogado > 60.0f) ? (TipoGato)(rand() % TOTAL_TIPOS_GATO) : GATO_PADRAO;
-    gato_adicionar(&partida->gatos, tipo, rand() % LINHAS_MAPA);
-    partida->timerGato = INTERVALO_GATO + rand() % 5;
 }
 
 /* selecionar_carta: marca a carta i para ser colocada no campo. Clicar de
@@ -282,13 +271,14 @@ static void tratar_entrada(Partida *partida, Vector2 mouse)
 }
 
 /* partida_atualizar: avança o tempo da partida, o aviso, os efeitos e a
- * recarga das cartas; faz os cachorros agirem, manda gatos (fora do
- * tutorial), move as bolinhas e os gatos, gera e move os petiscos e trata a
- * entrada do jogador. Se um gato invadir a casa, marca a derrota e a partida
+ * recarga das cartas; faz os cachorros agirem, manda os gatos das hordas
+ * (fora do tutorial), move as bolinhas e os gatos, gera e move os petiscos
+ * e trata a entrada do jogador. Se um gato invadir a casa, é derrota; se as
+ * 4 hordas forem vencidas, vitória. Com o resultado decidido, a partida
  * congela. */
 void partida_atualizar(Partida *partida, Vector2 mouse, float dt)
 {
-    if (partida->derrota) return;
+    if (partida->resultado != PARTIDA_EM_ANDAMENTO) return;
 
     partida->tempoJogado += dt;
     if (partida->timerAviso > 0.0f) partida->timerAviso -= dt;
@@ -300,9 +290,10 @@ void partida_atualizar(Partida *partida, Vector2 mouse, float dt)
     }
 
     agir_cachorros(partida, dt);
-    if (!partida_eh_tutorial(partida)) gerar_gatos_provisorio(partida, dt);
+    if (!partida_eh_tutorial(partida)) horda_atualizar(&partida->hordas, &partida->gatos, dt);
     projetil_atualizar_lista(&partida->projeteis, partida->gatos, dt);
-    if (gato_atualizar_lista(&partida->gatos, &partida->mapa, dt)) partida->derrota = true;
+    if (gato_atualizar_lista(&partida->gatos, &partida->mapa, dt))                partida->resultado = PARTIDA_DERROTA;
+    else if (!partida_eh_tutorial(partida) && horda_terminou(&partida->hordas)) partida->resultado = PARTIDA_VITORIA;
 
     soltar_petisco_do_ceu(partida, dt);
     petisco_atualizar_lista(&partida->petiscos, dt);
@@ -329,8 +320,21 @@ static void desenhar_carta(const Partida *partida, int i)
     DrawRectangleLinesEx(r, 2, (partida->cartaSelecionada == i) ? COR_INFECTADO : COR_BORDA);
 }
 
+/* desenhar_progresso: "Horda N/4" e uma barra que enche conforme os gatos
+ * da fase vão saindo (não aparece no tutorial). */
+static void desenhar_progresso(const Partida *partida)
+{
+    if (partida_eh_tutorial(partida)) return;
+
+    Rectangle barra = { 440, 43, 186, 5 };
+    ui_texto(TextFormat("Horda %d/%d", horda_numero(&partida->hordas), HORDAS_POR_FASE), 566, 30, FONTE_PEQUENA, COR_TEXTO);
+    DrawRectangleRec(barra, COR_SOMBRA);
+    DrawRectangle(barra.x, barra.y, barra.width * horda_progresso(&partida->hordas), barra.height, COR_SANGUE);
+}
+
 /* desenhar_hud: barra superior com o contador de petiscos, as cartas, o
- * botão da pá e, à direita, a fase, o tempo e o nome da carta sob o mouse. */
+ * botão da pá e, à direita, a fase, o tempo, o progresso das hordas e o
+ * nome da carta sob o mouse. */
 static void desenhar_hud(const Partida *partida, Vector2 mouse)
 {
     ui_desenhar_painel((Rectangle){ 4, 4, 632, 60 });
@@ -346,15 +350,16 @@ static void desenhar_hud(const Partida *partida, Vector2 mouse)
     ui_texto_centro("(S)", RET_PA.x + 23, 42, FONTE_PEQUENA, COR_TEXTO);
 
     int s = (int)partida->tempoJogado;
-    ui_texto(partida_eh_tutorial(partida) ? "TUTORIAL" : TextFormat("FASE %d", partida->fase), 440, 12, FONTE_MEDIA, COR_INFECTADO);
-    ui_texto(TextFormat("Tempo: %02d:%02d", s / 60, s % 60), 440, 36, FONTE_PEQUENA, COR_TEXTO);
+    ui_texto(partida_eh_tutorial(partida) ? "TUTORIAL" : TextFormat("FASE %d", partida->fase), 440, 8, FONTE_MEDIA, COR_INFECTADO);
+    ui_texto(TextFormat("Tempo: %02d:%02d", s / 60, s % 60), 440, 30, FONTE_PEQUENA, COR_TEXTO);
+    desenhar_progresso(partida);
 
     const char *dica = "ESC: pausa";
     for (int i = 0; i < partida->totalCartas; i++) {
         const InfoCachorro *info = cachorro_info(partida->cartas[i].tipo);
         if (CheckCollisionPointRec(mouse, retangulo_carta(i))) dica = TextFormat("%s - %s", info->nome, info->papel);
     }
-    ui_texto(dica, 440, 48, FONTE_PEQUENA, COR_BLOQUEADO);
+    ui_texto(dica, 440, 51, FONTE_PEQUENA, COR_BLOQUEADO);
 }
 
 /* desenhar_previa: destaca a célula sob o mouse. Com uma carta selecionada,
@@ -405,10 +410,18 @@ static void desenhar_mensagem(const Partida *partida)
     }
 }
 
+/* desenhar_anuncio_horda: pouco antes de cada horda, escreve o anúncio dela
+ * em letras grandes no meio do campo. */
+static void desenhar_anuncio_horda(const Partida *partida)
+{
+    const char *anuncio = horda_anuncio(&partida->hordas);
+    if (anuncio != NULL) ui_texto_centro(anuncio, LARGURA_VIRTUAL / 2, 200, FONTE_GRANDE, COR_ALERTA);
+}
+
 /* partida_desenhar: desenha, de trás para a frente, o céu e os prédios atrás
  * da barra, o campo com os cachorros, os gatos, as bolinhas, as explosões e
- * curas, a prévia sob o mouse, a barra superior, a faixa de mensagens e os
- * petiscos (por cima de tudo). */
+ * curas, a prévia sob o mouse, a barra superior, a faixa de mensagens, o
+ * anúncio da horda e os petiscos (por cima de tudo). */
 void partida_desenhar(const Partida *partida, Vector2 mouse)
 {
     cenario_desenhar_ceu(MAPA_Y, partida->tempoJogado);
@@ -420,5 +433,6 @@ void partida_desenhar(const Partida *partida, Vector2 mouse)
     desenhar_previa(partida, mouse);
     desenhar_hud(partida, mouse);
     desenhar_mensagem(partida);
+    desenhar_anuncio_horda(partida);
     petisco_desenhar_lista(partida->petiscos, partida->tempoJogado);
 }

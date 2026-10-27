@@ -6,6 +6,7 @@
 
 #include "raylib.h"
 #include "enemy.h"
+#include "horda.h"
 #include "map.h"
 #include "petisco.h"
 #include "projetil.h"
@@ -16,6 +17,12 @@
 #define PETISCOS_INICIAIS  200
 #define FASE_TUTORIAL      0
 #define MAX_EFEITOS        8     // explosões/curas na tela ao mesmo tempo
+
+typedef enum ResultadoPartida {
+    PARTIDA_EM_ANDAMENTO,
+    PARTIDA_VITORIA,       // as 4 hordas foram vencidas
+    PARTIDA_DERROTA        // um gato invadiu a casa
+} ResultadoPartida;
 
 typedef struct Carta {
     TipoCachorro tipo;
@@ -44,8 +51,8 @@ typedef struct Partida {
     bool     paSelecionada;
     float    tempoJogado;        // segundos de partida
     float    timerPetiscoCeu;    // segundos até o próximo petisco do céu
-    float    timerGato;          // segundos até o próximo gato (provisório, até as hordas)
-    bool     derrota;            // true quando um gato invade a casa
+    Hordas   hordas;             // as 4 hordas da fase (não usadas no tutorial)
+    ResultadoPartida resultado;  // em andamento, vitória ou derrota
     int      passoTutorial;      // instrução atual do tutorial
     const char *aviso;           // mensagem temporária ("Petiscos insuficientes!")
     float    timerAviso;         // segundos restantes do aviso
