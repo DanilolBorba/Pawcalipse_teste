@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Depurar PawPocalypse",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/pawpocalypse",
+            "windows": { "program": "${workspaceFolder}/pawpocalypse.exe" },
+            "cwd": "${workspaceFolder}",
+            "osx": { "MIMode": "lldb" },
+            "linux": { "MIMode": "gdb" },
+            "preLaunchTask": "Compilar PawPocalypse"
+        }
+    ]
+}

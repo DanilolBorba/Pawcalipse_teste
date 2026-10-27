@@ -1,0 +1,13 @@
+# Arquivos gerados na compilação
+build/
+*.o
+*.d
+pawpocalypse
+pawpocalypse.exe
+
+# Saves de cada jogador (criados ao jogar)
+assets/data/saves.txt
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
