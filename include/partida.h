@@ -15,11 +15,19 @@
 #define MAX_CARTAS         6     // Pote de Ração + 5 cachorros do deck
 #define PETISCOS_INICIAIS  200
 #define FASE_TUTORIAL      0
+#define MAX_EFEITOS        8     // explosões/curas na tela ao mesmo tempo
 
 typedef struct Carta {
     TipoCachorro tipo;
     float        recarga;   // segundos até poder comprar de novo
 } Carta;
+
+typedef struct Efeito {     // círculo que cresce e some (explosão, cura)
+    Vector2 centro;
+    float   raio;
+    float   tempo;          // segundos restantes (0 = vaga livre no vetor)
+    Color   cor;
+} Efeito;
 
 typedef struct Partida {
     int      fase;               // 1 a 5, ou FASE_TUTORIAL
@@ -30,6 +38,8 @@ typedef struct Partida {
     int      saldo;              // petiscos disponíveis para gastar
     Carta    cartas[MAX_CARTAS]; // [0] é sempre o Pote de Ração
     int      totalCartas;
+    int      deckTeste;          // deck provisório em uso (TAB troca; até a escolha de deck)
+    Efeito   efeitos[MAX_EFEITOS];
     int      cartaSelecionada;   // índice em cartas[], ou -1
     bool     paSelecionada;
     float    tempoJogado;        // segundos de partida
@@ -46,5 +56,6 @@ void partida_atualizar(Partida *partida, Vector2 mouse, float dt);  // entrada d
 void partida_desenhar(const Partida *partida, Vector2 mouse);       // campo, barra superior e petiscos
 void partida_destruir(Partida *partida);                            // libera a partida e tudo o que ela alocou
 bool partida_eh_tutorial(const Partida *partida);                   // true se for o tutorial
+void partida_adicionar_efeito(Partida *partida, Vector2 centro, float raio, Color cor);  // mostra uma explosão/cura
 
 #endif

@@ -2,6 +2,8 @@
 
 #include "ui.h"
 
+#include <string.h>
+
 /* ui_botao_clicado: verifica se o botão esquerdo do mouse foi pressionado
  * sobre o botão neste frame. Retorna true em caso de clique. */
 bool ui_botao_clicado(const Botao *botao, Vector2 mouse)
@@ -81,4 +83,20 @@ void ui_desenhar_barra_vida(Vector2 centro, float largura, float fracao)
     Rectangle fundo = { centro.x - largura / 2, centro.y - 2, largura, 4 };
     DrawRectangleRec(fundo, COR_SOMBRA);
     DrawRectangle(fundo.x, fundo.y, largura * fracao, fundo.height, (fracao > 0.5f) ? COR_INFECTADO : COR_ALERTA);
+}
+
+/* ui_desenhar_pixel_art: desenha uma figura guardada como MATRIZ de
+ * caracteres (um vetor de strings, um caractere por pixel), com o canto
+ * superior esquerdo em 'canto' e cada pixel ampliado 'escala' vezes. Cada
+ * caractere é procurado em 'simbolos' e o pixel recebe a cor de mesma
+ * posição em 'cores'; os que não estão lá (como '.') ficam transparentes. */
+void ui_desenhar_pixel_art(const char *figura[], int linhas, Vector2 canto, int escala,
+                           const char *simbolos, const Color cores[])
+{
+    for (int l = 0; l < linhas; l++) {
+        for (int c = 0; figura[l][c] != '\0'; c++) {
+            const char *achado = strchr(simbolos, figura[l][c]);
+            if (achado != NULL) DrawRectangle(canto.x + c * escala, canto.y + l * escala, escala, escala, cores[achado - simbolos]);
+        }
+    }
 }

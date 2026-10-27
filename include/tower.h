@@ -6,8 +6,7 @@
 
 #include "raylib.h"
 
-#define POTE_PRIMEIRA_PRODUCAO   6.0f   // segundos até o pote soltar o 1º petisco
-#define POTE_INTERVALO_PRODUCAO 15.0f   // segundos entre os petiscos seguintes
+#define RAIO_CACHORRO  22   // tamanho do cachorro desenhado no campo
 
 typedef enum TipoCachorro {
     TIPO_POTE_RACAO,   // gerador de petiscos: não é cachorro e não conta como carta
@@ -18,7 +17,7 @@ typedef enum TipoCachorro {
     TIPO_PASTOR_ALEMAO,
     TIPO_CHIHUAHUA,
     TIPO_SAO_BERNARDO,
-    TIPO_BORDER_COLLIE,
+    TIPO_DACHSHUND,
     TIPO_ROTTWEILER,
     TOTAL_TIPOS_CACHORRO
 } TipoCachorro;
@@ -29,9 +28,10 @@ typedef struct InfoCachorro {   // dados fixos de cada raça (provisórios)
     int   custo;           // preço em petiscos
     float recarga;         // segundos até poder comprar outro
     int   vidaMaxima;
-    int   dano;            // dano de cada ataque (0 = não ataca)
-    float cadencia;        // segundos entre dois ataques
-    int   lados;          // forma: 0 = círculo, 3 = triângulo, 4 = quadrado...
+    int   dano;            // dano de cada ataque (no São Bernardo, a cura)
+    float cadencia;        // segundos entre duas ações
+    float inicio;          // segundos até a 1ª ação (o pote produzir, a mina armar...)
+    int   lados;           // forma: 0 = círculo, 3 = triângulo, 4 = quadrado...
     float giro;            // rotação da forma, em graus
     Color cor;
 } InfoCachorro;
@@ -46,6 +46,7 @@ typedef struct Cachorro {   // um cachorro (ou pote) no campo, criado com malloc
 const InfoCachorro *cachorro_info(TipoCachorro tipo);                    // dados fixos de um tipo
 Cachorro *cachorro_criar(TipoCachorro tipo, int linha, int coluna);      // aloca um cachorro (NULL se faltar memória)
 void cachorro_destruir(Cachorro *cachorro);                              // libera um cachorro
-void cachorro_desenhar(TipoCachorro tipo, Vector2 centro, float raio, Color tinta);  // desenha a forma do tipo
+int  cachorro_quadro(const Cachorro *cachorro);                          // quadro da animação no campo (só o pote anima)
+void cachorro_desenhar(TipoCachorro tipo, Vector2 centro, float raio, int quadro, Color tinta);  // desenha o tipo (sprite ou forma)
 
 #endif

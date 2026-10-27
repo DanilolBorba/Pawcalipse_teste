@@ -37,5 +37,7 @@ void ui_texto(const char *texto, int x, int y, int tamanho, Color cor);         
 void ui_texto_centro(const char *texto, float centroX, int y, int tamanho, Color cor);  // texto com sombra centralizado em centroX
 void ui_desenhar_osso(Vector2 centro, float escala, Color cor);                         // ícone de osso (petisco)
 void ui_desenhar_barra_vida(Vector2 centro, float largura, float fracao);               // barra de vida (fracao de 0 a 1)
+void ui_desenhar_pixel_art(const char *figura[], int linhas, Vector2 canto, int escala,
+                           const char *simbolos, const Color cores[]);                  // figura em matriz de caracteres (1 caractere = 1 pixel)
 
 #endif

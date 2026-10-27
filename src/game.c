@@ -4,6 +4,7 @@
 #include "game.h"
 #include "cenario.h"
 #include "config.h"
+#include "sprite.h"
 #include "ui.h"
 
 #include <math.h>
@@ -249,7 +250,7 @@ static void desenhar_fases(const Jogo *jogo)
 
     ui_texto_centro(TextFormat("Pontos: %d    Tempo de jogo: %s", s->pontuacao, texto_tempo(s->tempoJogado)),
                     LARGURA_VIRTUAL / 2, 256, FONTE_PEQUENA, COR_TEXTO);
-    ui_texto_centro("(Teste: F9 durante a partida vence a fase)", LARGURA_VIRTUAL / 2, 276, FONTE_PEQUENA, COR_BLOQUEADO);
+    ui_texto_centro("(Teste: F9 vence a fase, TAB troca o deck, ] dá +100 petiscos)", LARGURA_VIRTUAL / 2, 276, FONTE_PEQUENA, COR_BLOQUEADO);
     ui_desenhar_botao(&botaoVoltar, jogo->mouse);
 }
 
@@ -317,8 +318,9 @@ static void desenhar_pausa(const Jogo *jogo)
 }
 
 /* jogo_criar: aloca o jogo com malloc, cria a tela virtual com filtro POINT
- * (ao ampliar, cada pixel vira um bloco, sem borrar), lê os saves do arquivo
- * e começa a música. Retorna o ponteiro, ou NULL se faltar memória. */
+ * (ao ampliar, cada pixel vira um bloco, sem borrar), carrega os sprites, lê
+ * os saves do arquivo e começa a música. Retorna o ponteiro, ou NULL se
+ * faltar memória. */
 Jogo *jogo_criar(void)
 {
     Jogo *jogo = malloc(sizeof(Jogo));
@@ -332,6 +334,7 @@ Jogo *jogo_criar(void)
     jogo->partida = NULL;
     jogo->tela = LoadRenderTexture(LARGURA_VIRTUAL, ALTURA_VIRTUAL);
     SetTextureFilter(jogo->tela.texture, TEXTURE_FILTER_POINT);
+    sprite_carregar_todos();
     save_carregar_todos(jogo->saves);
     audio_iniciar(&jogo->audio);
     return jogo;
@@ -394,12 +397,13 @@ void jogo_desenhar(const Jogo *jogo)
 }
 
 /* jogo_destruir: se o jogo for fechado no meio de uma partida, salva o tempo
- * jogado; depois libera a música, a tela virtual e o próprio jogo. */
+ * jogado; depois libera a música, os sprites, a tela virtual e o próprio jogo. */
 void jogo_destruir(Jogo *jogo)
 {
     if (jogo == NULL) return;
     encerrar_partida(jogo, false);
     audio_finalizar(&jogo->audio);
+    sprite_descarregar_todos();
     UnloadRenderTexture(jogo->tela);
     free(jogo);
 }
