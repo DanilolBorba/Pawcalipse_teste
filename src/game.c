@@ -23,6 +23,7 @@ static const Botao botoesMenu[TOTAL_BOTOES_MENU] = {
 static const Botao botaoVoltar = { { 240, 312, 160, 30 }, "Voltar" };
 static const Botao botaoContinuar = { { 220, 160, 200, 30 }, "Continuar" };
 static const Botao botaoSairPartida = { { 220, 200, 200, 30 }, "Sair da Partida" };
+static const Botao botaoDerrota = { { 220, 200, 200, 30 }, "Voltar ao Mapa" };
 
 /* area_da_tela: calcula onde a tela virtual aparece dentro da janela. Usa
  * escala inteira (2x, 3x...) para todos os pixels terem o mesmo tamanho;
@@ -277,14 +278,31 @@ static void desenhar_instrucoes(const Jogo *jogo)
     ui_desenhar_botao(&botaoVoltar, jogo->mouse);
 }
 
-/* atualizar_jogando: ESC/P pausa; F9 vence a fase na hora (atalho de teste
- * até as hordas existirem); senão atualiza a partida, com o tempo do frame
- * limitado a 0,1 s para evitar "saltos" se o jogo travar um instante. */
+/* atualizar_jogando: depois da derrota, só espera o clique em "Voltar ao
+ * Mapa". Senão: ESC/P pausa; F9 vence a fase na hora (atalho de teste até as
+ * hordas existirem); ou atualiza a partida, com o tempo do frame limitado a
+ * 0,1 s para evitar "saltos" se o jogo travar um instante. */
 static void atualizar_jogando(Jogo *jogo)
 {
+    if (jogo->partida->derrota) {
+        if (ui_botao_clicado(&botaoDerrota, jogo->mouse)) encerrar_partida(jogo, false);
+        return;
+    }
     if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) jogo->estado = ESTADO_PAUSA;
     else if (IsKeyPressed(KEY_F9) && !partida_eh_tutorial(jogo->partida)) encerrar_partida(jogo, true);
     else partida_atualizar(jogo->partida, jogo->mouse, fminf(GetFrameTime(), 0.1f));
+}
+
+/* desenhar_jogando: desenha a partida; se um gato invadiu a casa, escurece a
+ * tela e mostra o aviso de derrota com o botão para voltar ao mapa. */
+static void desenhar_jogando(const Jogo *jogo)
+{
+    partida_desenhar(jogo->partida, jogo->mouse);
+    if (!jogo->partida->derrota) return;
+
+    DrawRectangle(0, 0, LARGURA_VIRTUAL, ALTURA_VIRTUAL, Fade(BLACK, 0.6f));
+    ui_texto_centro("A CASA FOI INVADIDA!", LARGURA_VIRTUAL / 2, 120, FONTE_GRANDE, COR_ALERTA);
+    ui_desenhar_botao(&botaoDerrota, jogo->mouse);
 }
 
 /* desenhar_pausa: a partida congelada ao fundo, escurecida, com os botões
@@ -362,7 +380,7 @@ void jogo_desenhar(const Jogo *jogo)
         case ESTADO_SAVES:      desenhar_saves(jogo);                         break;
         case ESTADO_FASES:      desenhar_fases(jogo);                         break;
         case ESTADO_INSTRUCOES: desenhar_instrucoes(jogo);                    break;
-        case ESTADO_JOGANDO:    partida_desenhar(jogo->partida, jogo->mouse); break;
+        case ESTADO_JOGANDO:    desenhar_jogando(jogo);                       break;
         case ESTADO_PAUSA:      desenhar_pausa(jogo);                         break;
         case ESTADO_SAIR:                                                     break;
     }

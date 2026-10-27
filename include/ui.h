@@ -36,5 +36,6 @@ void ui_desenhar_painel(Rectangle area);                    // fundo escuro com 
 void ui_texto(const char *texto, int x, int y, int tamanho, Color cor);                // texto com sombra
 void ui_texto_centro(const char *texto, float centroX, int y, int tamanho, Color cor);  // texto com sombra centralizado em centroX
 void ui_desenhar_osso(Vector2 centro, float escala, Color cor);                         // ícone de osso (petisco)
+void ui_desenhar_barra_vida(Vector2 centro, float largura, float fracao);               // barra de vida (fracao de 0 a 1)
 
 #endif

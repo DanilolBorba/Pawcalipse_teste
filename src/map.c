@@ -76,6 +76,17 @@ void mapa_remover(Mapa *mapa, int linha, int coluna)
     mapa->grade[linha][coluna] = NULL;
 }
 
+/* desenhar_cachorro_no_campo: desenha o cachorro no centro da sua célula e,
+ * se ele estiver ferido, a barra de vida logo acima. */
+static void desenhar_cachorro_no_campo(const Cachorro *cachorro)
+{
+    Vector2 centro = mapa_centro_celula(cachorro->linha, cachorro->coluna);
+    int vidaMaxima = cachorro_info(cachorro->tipo)->vidaMaxima;
+
+    cachorro_desenhar(cachorro->tipo, centro, 22, WHITE);
+    if (cachorro->vida < vidaMaxima) ui_desenhar_barra_vida((Vector2){ centro.x, centro.y - 28 }, 30, (float)cachorro->vida / vidaMaxima);
+}
+
 /* mapa_desenhar: desenha o gramado em xadrez, a casa à esquerda (telhado,
  * parede, janela acesa, porta e a placa "LAR"), a rua à direita, a terra
  * embaixo e, por fim, cada cachorro da matriz no centro da sua célula. */
@@ -97,7 +108,7 @@ void mapa_desenhar(const Mapa *mapa)
 
     for (int l = 0; l < LINHAS_MAPA; l++) {
         for (int c = 0; c < COLUNAS_MAPA; c++) {
-            if (mapa->grade[l][c] != NULL) cachorro_desenhar(mapa->grade[l][c]->tipo, mapa_centro_celula(l, c), 22, WHITE);
+            if (mapa->grade[l][c] != NULL) desenhar_cachorro_no_campo(mapa->grade[l][c]);
         }
     }
 }

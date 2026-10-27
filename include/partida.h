@@ -5,8 +5,10 @@
  * quando a fase começa e liberada quando o jogador sai dela. */
 
 #include "raylib.h"
+#include "enemy.h"
 #include "map.h"
 #include "petisco.h"
+#include "projetil.h"
 #include "tower.h"
 #include <stdbool.h>
 
@@ -23,6 +25,8 @@ typedef struct Partida {
     int      fase;               // 1 a 5, ou FASE_TUTORIAL
     Mapa     mapa;               // matriz 4x8 com os cachorros
     Petisco *petiscos;           // lista encadeada dos petiscos na tela
+    Gato    *gatos;              // lista encadeada dos gatos em campo
+    Projetil *projeteis;         // lista encadeada das bolinhas em voo
     int      saldo;              // petiscos disponíveis para gastar
     Carta    cartas[MAX_CARTAS]; // [0] é sempre o Pote de Ração
     int      totalCartas;
@@ -30,6 +34,8 @@ typedef struct Partida {
     bool     paSelecionada;
     float    tempoJogado;        // segundos de partida
     float    timerPetiscoCeu;    // segundos até o próximo petisco do céu
+    float    timerGato;          // segundos até o próximo gato (provisório, até as hordas)
+    bool     derrota;            // true quando um gato invade a casa
     int      passoTutorial;      // instrução atual do tutorial
     const char *aviso;           // mensagem temporária ("Petiscos insuficientes!")
     float    timerAviso;         // segundos restantes do aviso

@@ -5,17 +5,17 @@
 #include <stdlib.h>
 
 static const InfoCachorro infos[TOTAL_TIPOS_CACHORRO] = {
-    /*                      nome             papel             custo recarga  vida lados  giro    cor */
-    [TIPO_POTE_RACAO]    = { "Pote de Ração", "Gera petiscos",     50,  7.5f,  300,  0,   0.0f, { 196,  58,  50, 255 } },
-    [TIPO_BEAGLE]        = { "Beagle",        "Atirador",         100,  7.5f,  300,  0,   0.0f, { 196, 140,  80, 255 } },
-    [TIPO_BULLDOG]       = { "Bulldog",       "Muralha",           50, 30.0f, 4000,  4,  45.0f, { 214, 180, 140, 255 } },
-    [TIPO_DALMATA]       = { "Dálmata",       "Atirador duplo",   200,  7.5f,  300,  5, -90.0f, { 240, 240, 236, 255 } },
-    [TIPO_HUSKY]         = { "Husky",         "Latido gelado",    175,  7.5f,  300,  3, -90.0f, { 150, 196, 236, 255 } },
-    [TIPO_PASTOR_ALEMAO] = { "Pastor Alemão", "Mordida forte",    150,  7.5f,  300,  6,   0.0f, { 190, 130,  64, 255 } },
-    [TIPO_CHIHUAHUA]     = { "Chihuahua",     "Mina explosiva",    25, 30.0f,  300,  4,   0.0f, { 240, 204,  90, 255 } },
-    [TIPO_SAO_BERNARDO]  = { "São Bernardo",  "Cura vizinhos",    125, 15.0f,  300,  8,  22.5f, { 150,  80,  40, 255 } },
-    [TIPO_BORDER_COLLIE] = { "Border Collie", "Ataca 3 linhas",   300,  7.5f,  300,  7, -90.0f, {  70,  70,  86, 255 } },
-    [TIPO_ROTTWEILER]    = { "Rottweiler",    "Explosão 3x3",     150, 35.0f,  300,  3,  90.0f, {  36,  32,  34, 255 } },
+    /*                      nome             papel             custo recarga  vida dano cadência lados  giro    cor */
+    [TIPO_POTE_RACAO]    = { "Pote de Ração", "Gera petiscos",     50,  7.5f,  300,   0, 0.0f,  0,   0.0f, { 196,  58,  50, 255 } },
+    [TIPO_BEAGLE]        = { "Beagle",        "Atirador",         100,  7.5f,  300,  20, 1.5f,  0,   0.0f, { 196, 140,  80, 255 } },
+    [TIPO_BULLDOG]       = { "Bulldog",       "Muralha",           50, 30.0f, 4000,   0, 0.0f,  4,  45.0f, { 214, 180, 140, 255 } },
+    [TIPO_DALMATA]       = { "Dálmata",       "Atirador duplo",   200,  7.5f,  300,   0, 0.0f,  5, -90.0f, { 240, 240, 236, 255 } },
+    [TIPO_HUSKY]         = { "Husky",         "Latido gelado",    175,  7.5f,  300,   0, 0.0f,  3, -90.0f, { 150, 196, 236, 255 } },
+    [TIPO_PASTOR_ALEMAO] = { "Pastor Alemão", "Mordida forte",    150,  7.5f,  300,   0, 0.0f,  6,   0.0f, { 190, 130,  64, 255 } },
+    [TIPO_CHIHUAHUA]     = { "Chihuahua",     "Mina explosiva",    25, 30.0f,  300,   0, 0.0f,  4,   0.0f, { 240, 204,  90, 255 } },
+    [TIPO_SAO_BERNARDO]  = { "São Bernardo",  "Cura vizinhos",    125, 15.0f,  300,   0, 0.0f,  8,  22.5f, { 150,  80,  40, 255 } },
+    [TIPO_BORDER_COLLIE] = { "Border Collie", "Ataca 3 linhas",   300,  7.5f,  300,   0, 0.0f,  7, -90.0f, {  70,  70,  86, 255 } },
+    [TIPO_ROTTWEILER]    = { "Rottweiler",    "Explosão 3x3",     150, 35.0f,  300,   0, 0.0f,  3,  90.0f, {  36,  32,  34, 255 } },
 };
 
 /* cachorro_info: retorna um ponteiro para os dados fixos do tipo na tabela. */

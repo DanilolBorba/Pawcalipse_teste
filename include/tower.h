@@ -29,7 +29,9 @@ typedef struct InfoCachorro {   // dados fixos de cada raça (provisórios)
     int   custo;           // preço em petiscos
     float recarga;         // segundos até poder comprar outro
     int   vidaMaxima;
-    int   lados;           // forma: 0 = círculo, 3 = triângulo, 4 = quadrado...
+    int   dano;            // dano de cada ataque (0 = não ataca)
+    float cadencia;        // segundos entre dois ataques
+    int   lados;          // forma: 0 = círculo, 3 = triângulo, 4 = quadrado...
     float giro;            // rotação da forma, em graus
     Color cor;
 } InfoCachorro;
@@ -38,7 +40,7 @@ typedef struct Cachorro {   // um cachorro (ou pote) no campo, criado com malloc
     TipoCachorro tipo;
     int   linha, coluna;   // posição na matriz do mapa
     int   vida;
-    float timer;           // produção do pote / cadência de ataque (próximas etapas)
+    float timer;           // segundos até a próxima ação (petisco do pote, ataque...)
 } Cachorro;
 
 const InfoCachorro *cachorro_info(TipoCachorro tipo);                    // dados fixos de um tipo

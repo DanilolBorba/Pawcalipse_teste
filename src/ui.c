@@ -72,3 +72,13 @@ void ui_desenhar_osso(Vector2 centro, float escala, Color cor)
         }
     }
 }
+
+/* ui_desenhar_barra_vida: barra fina centrada em 'centro', com a largura
+ * dada. 'fracao' vai de 0 (vazia) a 1 (cheia); a parte cheia é verde e fica
+ * vermelha quando a vida cai abaixo da metade. */
+void ui_desenhar_barra_vida(Vector2 centro, float largura, float fracao)
+{
+    Rectangle fundo = { centro.x - largura / 2, centro.y - 2, largura, 4 };
+    DrawRectangleRec(fundo, COR_SOMBRA);
+    DrawRectangle(fundo.x, fundo.y, largura * fracao, fundo.height, (fracao > 0.5f) ? COR_INFECTADO : COR_ALERTA);
+}
