@@ -24,7 +24,7 @@ static const Botao botoesMenu[TOTAL_BOTOES_MENU] = {
 static const Botao botaoVoltar = { { 240, 312, 160, 30 }, "Voltar" };
 static const Botao botaoContinuar = { { 220, 160, 200, 30 }, "Continuar" };
 static const Botao botaoSairPartida = { { 220, 200, 200, 30 }, "Sair da Partida" };
-static const Botao botaoDerrota = { { 220, 200, 200, 30 }, "Voltar ao Mapa" };
+static const Botao botaoVoltarMapa = { { 220, 230, 200, 30 }, "Voltar ao Mapa" };
 
 /* area_da_tela: calcula onde a tela virtual aparece dentro da janela. Usa
  * escala inteira (2x, 3x...) para todos os pixels terem o mesmo tamanho;
@@ -59,10 +59,11 @@ static void iniciar_partida(Jogo *jogo, int fase)
     if (jogo->partida != NULL) jogo->estado = ESTADO_JOGANDO;
 }
 
-/* encerrar_partida: soma o tempo jogado ao save atual e, se 'venceu', marca
- * a fase como concluída e libera a próxima; grava o arquivo, destrói a
- * partida e volta para o mapa de fases (ou para o menu, se era o tutorial). */
-static void encerrar_partida(Jogo *jogo, bool venceu)
+/* encerrar_partida: soma o tempo jogado ao save atual e, se a partida foi
+ * vencida, marca a fase como concluída e libera a próxima; grava o arquivo,
+ * destrói a partida e volta para o mapa de fases (ou para o menu, se era o
+ * tutorial). */
+static void encerrar_partida(Jogo *jogo)
 {
     Partida *partida = jogo->partida;
     if (partida == NULL) return;
@@ -71,7 +72,7 @@ static void encerrar_partida(Jogo *jogo, bool venceu)
     if (!tutorial && jogo->saveAtual >= 0) {
         Save *save = &jogo->saves[jogo->saveAtual];
         save->tempoJogado += partida->tempoJogado;
-        if (venceu) {
+        if (partida->resultado == PARTIDA_VITORIA) {
             save->faseConcluida[partida->fase - 1] = true;
             if (partida->fase < TOTAL_FASES && save->faseLiberada <= partida->fase) save->faseLiberada = partida->fase + 1;
         }
@@ -250,7 +251,7 @@ static void desenhar_fases(const Jogo *jogo)
 
     ui_texto_centro(TextFormat("Pontos: %d    Tempo de jogo: %s", s->pontuacao, texto_tempo(s->tempoJogado)),
                     LARGURA_VIRTUAL / 2, 256, FONTE_PEQUENA, COR_TEXTO);
-    ui_texto_centro("(Teste: F9 vence a fase, TAB troca o deck, ] dá +100 petiscos)", LARGURA_VIRTUAL / 2, 276, FONTE_PEQUENA, COR_BLOQUEADO);
+    ui_texto_centro("(Teste: TAB troca o deck, ] dá +100 petiscos)", LARGURA_VIRTUAL / 2, 276, FONTE_PEQUENA, COR_BLOQUEADO);
     ui_desenhar_botao(&botaoVoltar, jogo->mouse);
 }
 
@@ -279,31 +280,66 @@ static void desenhar_instrucoes(const Jogo *jogo)
     ui_desenhar_botao(&botaoVoltar, jogo->mouse);
 }
 
-/* atualizar_jogando: depois da derrota, só espera o clique em "Voltar ao
- * Mapa". Senão: ESC/P pausa; F9 vence a fase na hora (atalho de teste até as
- * hordas existirem); ou atualiza a partida, com o tempo do frame limitado a
- * 0,1 s para evitar "saltos" se o jogo travar um instante. */
+/* botao_fim_partida: monta o 1º botão da tela de fim de partida: "Próxima
+ * Fase" depois de uma vitória ("Jogar de Novo" na última fase) ou "Tentar de
+ * Novo" depois de uma derrota. */
+static Botao botao_fim_partida(const Partida *partida)
+{
+    bool venceu = (partida->resultado == PARTIDA_VITORIA);
+    const char *texto = !venceu ? "Tentar de Novo" : (partida->fase < TOTAL_FASES ? "Próxima Fase" : "Jogar de Novo");
+    return (Botao){ { 220, 192, 200, 30 }, texto };
+}
+
+/* fase_do_botao_fim: fase que o 1º botão abre: a próxima depois de uma
+ * vitória (a mesma, se for a última) e a mesma depois de uma derrota. */
+static int fase_do_botao_fim(const Partida *partida)
+{
+    bool venceu = (partida->resultado == PARTIDA_VITORIA);
+    return (venceu && partida->fase < TOTAL_FASES) ? partida->fase + 1 : partida->fase;
+}
+
+/* atualizar_fim_partida: na tela de vitória/derrota, o 1º botão encerra a
+ * partida (salvando o resultado) e já começa a fase dele; "Voltar ao Mapa"
+ * só encerra. */
+static void atualizar_fim_partida(Jogo *jogo)
+{
+    Botao principal = botao_fim_partida(jogo->partida);
+    int fase = fase_do_botao_fim(jogo->partida);
+
+    if (ui_botao_clicado(&principal, jogo->mouse)) {
+        encerrar_partida(jogo);
+        iniciar_partida(jogo, fase);
+    } else if (ui_botao_clicado(&botaoVoltarMapa, jogo->mouse)) {
+        encerrar_partida(jogo);
+    }
+}
+
+/* atualizar_jogando: com o resultado decidido, trata a tela de vitória ou
+ * derrota. Senão: ESC/P pausa; ou atualiza a partida, com o tempo do frame
+ * limitado a 0,1 s para evitar "saltos" se o jogo travar um instante. */
 static void atualizar_jogando(Jogo *jogo)
 {
-    if (jogo->partida->derrota) {
-        if (ui_botao_clicado(&botaoDerrota, jogo->mouse)) encerrar_partida(jogo, false);
-        return;
-    }
-    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) jogo->estado = ESTADO_PAUSA;
-    else if (IsKeyPressed(KEY_F9) && !partida_eh_tutorial(jogo->partida)) encerrar_partida(jogo, true);
+    if (jogo->partida->resultado != PARTIDA_EM_ANDAMENTO) atualizar_fim_partida(jogo);
+    else if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) jogo->estado = ESTADO_PAUSA;
     else partida_atualizar(jogo->partida, jogo->mouse, fminf(GetFrameTime(), 0.1f));
 }
 
-/* desenhar_jogando: desenha a partida; se um gato invadiu a casa, escurece a
- * tela e mostra o aviso de derrota com o botão para voltar ao mapa. */
+/* desenhar_jogando: desenha a partida; com o resultado decidido, escurece a
+ * tela e mostra por cima o título (vitória em verde, derrota em vermelho),
+ * o tempo da partida e os dois botões. */
 static void desenhar_jogando(const Jogo *jogo)
 {
-    partida_desenhar(jogo->partida, jogo->mouse);
-    if (!jogo->partida->derrota) return;
+    const Partida *partida = jogo->partida;
+    partida_desenhar(partida, jogo->mouse);
+    if (partida->resultado == PARTIDA_EM_ANDAMENTO) return;
 
+    bool venceu = (partida->resultado == PARTIDA_VITORIA);
+    Botao principal = botao_fim_partida(partida);
     DrawRectangle(0, 0, LARGURA_VIRTUAL, ALTURA_VIRTUAL, Fade(BLACK, 0.6f));
-    ui_texto_centro("A CASA FOI INVADIDA!", LARGURA_VIRTUAL / 2, 120, FONTE_GRANDE, COR_ALERTA);
-    ui_desenhar_botao(&botaoDerrota, jogo->mouse);
+    ui_texto_centro(venceu ? "FASE CONCLUÍDA!" : "A CASA FOI INVADIDA!", LARGURA_VIRTUAL / 2, 100, FONTE_GRANDE, venceu ? COR_INFECTADO : COR_ALERTA);
+    ui_texto_centro(TextFormat("Tempo: %s", texto_tempo(partida->tempoJogado)), LARGURA_VIRTUAL / 2, 150, FONTE_MEDIA, COR_TEXTO);
+    ui_desenhar_botao(&principal, jogo->mouse);
+    ui_desenhar_botao(&botaoVoltarMapa, jogo->mouse);
 }
 
 /* desenhar_pausa: a partida congelada ao fundo, escurecida, com os botões
@@ -364,7 +400,7 @@ void jogo_atualizar(Jogo *jogo)
             break;
         case ESTADO_PAUSA:
             if (ui_botao_clicado(&botaoContinuar, jogo->mouse) || IsKeyPressed(KEY_ESCAPE)) jogo->estado = ESTADO_JOGANDO;
-            else if (ui_botao_clicado(&botaoSairPartida, jogo->mouse)) encerrar_partida(jogo, false);
+            else if (ui_botao_clicado(&botaoSairPartida, jogo->mouse)) encerrar_partida(jogo);
             break;
         case ESTADO_SAIR:
             break;
@@ -396,12 +432,13 @@ void jogo_desenhar(const Jogo *jogo)
     EndDrawing();
 }
 
-/* jogo_destruir: se o jogo for fechado no meio de uma partida, salva o tempo
- * jogado; depois libera a música, os sprites, a tela virtual e o próprio jogo. */
+/* jogo_destruir: se o jogo for fechado durante uma partida, salva o tempo
+ * jogado (e a vitória, se já estava na tela de vitória); depois libera a
+ * música, os sprites, a tela virtual e o próprio jogo. */
 void jogo_destruir(Jogo *jogo)
 {
     if (jogo == NULL) return;
-    encerrar_partida(jogo, false);
+    encerrar_partida(jogo);
     audio_finalizar(&jogo->audio);
     sprite_descarregar_todos();
     UnloadRenderTexture(jogo->tela);
