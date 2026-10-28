@@ -91,15 +91,15 @@ bool mapa_mover(Mapa *mapa, Cachorro *cachorro, int linha, int coluna)
 }
 
 /* desenhar_cachorro_no_campo: desenha o cachorro no centro da sua célula,
- * no quadro atual da animação (o Chihuahua fica escuro até a mina armar)
+ * no quadro atual da animação (o Westie fica escuro enquanto cava a toca)
  * e, se ele estiver ferido, a barra de vida logo acima. */
 static void desenhar_cachorro_no_campo(const Cachorro *cachorro)
 {
     Vector2 centro = mapa_centro_celula(cachorro->linha, cachorro->coluna);
     int vidaMaxima = cachorro_info(cachorro->tipo)->vidaMaxima;
-    bool desarmada = (cachorro->tipo == TIPO_CHIHUAHUA && cachorro->timer > 0.0f);
+    bool cavando = (cachorro->tipo == TIPO_WESTIE && cachorro->timer > 0.0f);
 
-    cachorro_desenhar(cachorro->tipo, centro, RAIO_CACHORRO, cachorro_quadro(cachorro), desarmada ? GRAY : WHITE);
+    cachorro_desenhar(cachorro->tipo, centro, RAIO_CACHORRO, cachorro_quadro(cachorro), cavando ? GRAY : WHITE);
     if (cachorro->vida < vidaMaxima) ui_desenhar_barra_vida((Vector2){ centro.x, centro.y - 28 }, 30, (float)cachorro->vida / vidaMaxima);
 }
 

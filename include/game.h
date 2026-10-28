@@ -7,6 +7,7 @@
 
 #include "raylib.h"
 #include "audio.h"
+#include "deck.h"
 #include "partida.h"
 #include "save.h"
 
@@ -15,6 +16,7 @@ typedef enum EstadoJogo {
     ESTADO_SAVES,       // escolha de um dos 3 saves
     ESTADO_FASES,       // as 5 fases do save escolhido
     ESTADO_INSTRUCOES,  // como jogar
+    ESTADO_DECK,        // escolha do deck antes da fase
     ESTADO_JOGANDO,     // partida em andamento
     ESTADO_PAUSA,       // partida pausada
     ESTADO_SAIR         // fecha o jogo
@@ -29,6 +31,7 @@ typedef struct Jogo {
     Save            saves[TOTAL_SAVES];  // os 3 saves lidos do arquivo
     int             saveAtual;           // save em uso (-1 = nenhum)
     int             saveParaApagar;      // save esperando confirmação (-1 = nenhum)
+    EscolhaDeck     deck;                // deck escolhido (lembrado entre as fases)
     Partida        *partida;             // partida em andamento (NULL fora dela)
 } Jogo;
 

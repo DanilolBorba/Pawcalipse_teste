@@ -15,10 +15,11 @@ typedef enum TipoCachorro {
     TIPO_DALMATA,
     TIPO_HUSKY,
     TIPO_PASTOR_ALEMAO,
-    TIPO_CHIHUAHUA,
+    TIPO_WESTIE,       // West Highland White Terrier
     TIPO_SAO_BERNARDO,
     TIPO_DACHSHUND,
     TIPO_ROTTWEILER,
+    TIPO_SHIBA,
     TOTAL_TIPOS_CACHORRO
 } TipoCachorro;
 

@@ -23,20 +23,19 @@ static const Rectangle RET_PA = { 376, 8, 46, 52 };
 static const Rectangle RET_LUVA = { 426, 8, 46, 52 };
 static const Rectangle RET_ACELERAR = { 592, 8, 40, 52 };
 
-static const TipoCachorro deckTutorial[] = { TIPO_POTE_RACAO, TIPO_BEAGLE, TIPO_BULLDOG };
-static const TipoCachorro decksTeste[2][MAX_CARTAS] = {   // provisórios, até a escolha de deck (Etapa 6)
-    { TIPO_POTE_RACAO, TIPO_BEAGLE, TIPO_BULLDOG, TIPO_DALMATA, TIPO_HUSKY, TIPO_CHIHUAHUA },
-    { TIPO_POTE_RACAO, TIPO_PASTOR_ALEMAO, TIPO_SAO_BERNARDO, TIPO_DACHSHUND, TIPO_ROTTWEILER, TIPO_BEAGLE },
-};
+#define LINHA_GATO_TUTORIAL  1      // o gato do tutorial vem pela 2ª linha...
+#define X_GATO_TUTORIAL      600.0f // ...já perto do campo, para não demorar
 
-enum { TUTORIAL_COLETAR, TUTORIAL_POTE, TUTORIAL_CACHORRO, TUTORIAL_PA, TUTORIAL_FIM };
+static const TipoCachorro deckTutorial[] = { TIPO_BEAGLE, TIPO_BULLDOG };
+
+enum { TUTORIAL_COLETAR, TUTORIAL_POTE, TUTORIAL_CACHORRO, TUTORIAL_PA, TUTORIAL_GATO };
 
 static const char *textosTutorial[] = {
     "Clique no osso que está caindo para coletar petiscos.",
     "Compre um Pote de Ração: clique na carta e depois no campo.",
     "O pote gera petiscos sozinho! Agora coloque um Beagle.",
     "Use a pá (ou tecla S) para remover um cachorro do campo.",
-    "Muito bem! Nas fases, os gatos zumbis vão atacar. ESC para sair.",
+    "Um gato vem pela 2ª linha! Ponha um Beagle nela. (V acelera)",
 };
 
 /* retangulo_carta: área da carta de índice i na barra superior. */
@@ -53,27 +52,34 @@ static void avisar(Partida *partida, const char *texto)
 }
 
 /* avancar_tutorial: se a partida for o tutorial e o jogador acabou de cumprir
- * o passo atual, passa para a próxima instrução. */
+ * o passo atual, passa para a próxima instrução. Ao chegar ao último passo,
+ * solta o gato do tutorial na 2ª linha, já perto do campo. */
 static void avancar_tutorial(Partida *partida, int passoCumprido)
 {
-    if (partida->fase == FASE_TUTORIAL && partida->passoTutorial == passoCumprido) partida->passoTutorial++;
+    if (partida->fase != FASE_TUTORIAL || partida->passoTutorial != passoCumprido) return;
+
+    partida->passoTutorial++;
+    if (partida->passoTutorial == TUTORIAL_GATO && gato_adicionar(&partida->gatos, GATO_PADRAO, LINHA_GATO_TUTORIAL)) {
+        partida->gatos->x = X_GATO_TUTORIAL;
+    }
 }
 
-/* montar_deck: copia os tipos do deck para as cartas da partida, com todas
- * prontas para comprar e nenhuma selecionada. */
+/* montar_deck: monta as cartas da partida: o Pote de Ração e, depois dele,
+ * os cachorros do deck, todos prontos para comprar e nenhum selecionado. */
 static void montar_deck(Partida *partida, const TipoCachorro deck[], int total)
 {
-    partida->totalCartas = total;
+    partida->totalCartas = total + 1;
     partida->cartaSelecionada = -1;
-    for (int i = 0; i < total; i++) partida->cartas[i] = (Carta){ deck[i], 0.0f };
+    partida->cartas[0] = (Carta){ TIPO_POTE_RACAO, 0.0f };
+    for (int i = 0; i < total; i++) partida->cartas[i + 1] = (Carta){ deck[i], 0.0f };
 }
 
 /* partida_criar: aloca a partida com malloc, zera tudo e prepara o campo
  * vazio, as listas de petiscos, gatos e bolinhas vazias, o saldo inicial,
- * a luva com todos os usos, as hordas da fase (o tutorial não tem) e o deck
- * (fixo por enquanto: o do tutorial ou o 1º deck de teste). Retorna NULL se
- * faltar memória. */
-Partida *partida_criar(int fase)
+ * a luva com todos os usos e as cartas: no tutorial, um deck fixo; nas
+ * fases, o deck escolhido pelo jogador e as hordas. Retorna NULL se faltar
+ * memória. */
+Partida *partida_criar(int fase, const TipoCachorro deck[TAMANHO_DECK])
 {
     Partida *partida = malloc(sizeof(Partida));
     if (partida == NULL) return NULL;
@@ -93,7 +99,7 @@ Partida *partida_criar(int fase)
     if (fase == FASE_TUTORIAL) {
         montar_deck(partida, deckTutorial, TAMANHO(deckTutorial));
     } else {
-        montar_deck(partida, decksTeste[0], MAX_CARTAS);
+        montar_deck(partida, deck, TAMANHO_DECK);
         horda_iniciar(&partida->hordas, fase);
     }
     return partida;
@@ -280,17 +286,14 @@ static void colocar_cachorro(Partida *partida, int linha, int coluna)
     avancar_tutorial(partida, (carta->tipo == TIPO_POTE_RACAO) ? TUTORIAL_POTE : TUTORIAL_CACHORRO);
 }
 
-/* tratar_atalhos_teste: atalhos PROVISÓRIOS para testar as raças: ']' dá
- * PETISCOS_TESTE petiscos (lido pelo caractere digitado, então funciona em
- * qualquer teclado) e, fora do tutorial, TAB troca o deck de teste. */
+/* tratar_atalhos_teste: ATALHOS DE TESTE (saem na versão final, Etapa 10),
+ * lidos pelo caractere digitado para funcionarem em qualquer teclado: ']' dá
+ * PETISCOS_TESTE petiscos e '\' vence a fase na hora. */
 static void tratar_atalhos_teste(Partida *partida)
 {
     for (int tecla = GetCharPressed(); tecla != 0; tecla = GetCharPressed()) {
-        if (tecla == ']') partida->saldo += PETISCOS_TESTE;
-    }
-    if (IsKeyPressed(KEY_TAB) && !partida_eh_tutorial(partida)) {
-        partida->deckTeste = 1 - partida->deckTeste;
-        montar_deck(partida, decksTeste[partida->deckTeste], MAX_CARTAS);
+        if (tecla == ']')  partida->saldo += PETISCOS_TESTE;
+        if (tecla == '\\') partida->resultado = PARTIDA_VITORIA;
     }
 }
 
@@ -360,13 +363,21 @@ static void tratar_entrada(Partida *partida, Vector2 mouse)
     if (mapa_celula_no_ponto(mouse, &linha, &coluna)) clicar_no_campo(partida, linha, coluna);
 }
 
+/* fase_vencida: true quando as 4 hordas da fase foram vencidas ou, no
+ * tutorial, quando o gato do último passo foi derrotado. */
+static bool fase_vencida(const Partida *partida)
+{
+    if (partida_eh_tutorial(partida)) return partida->passoTutorial == TUTORIAL_GATO && partida->gatos == NULL;
+    return horda_terminou(&partida->hordas);
+}
+
 /* partida_atualizar: avança o tempo da partida, o aviso, os efeitos e a
  * recarga das cartas; faz os cachorros agirem, manda os gatos das hordas
  * (fora do tutorial), move as bolinhas e os gatos, gera e move os petiscos
- * e trata a entrada do jogador. Se um gato invadir a casa, é derrota; se as
- * 4 hordas forem vencidas, vitória. Com o resultado decidido, a partida
- * congela. Com o 2x ligado, o jogo avança o dobro ('passo'), mas o relógio
- * da partida e os avisos seguem o tempo real ('dt'). */
+ * e trata a entrada do jogador. Se um gato invadir a casa, é derrota; se a
+ * fase for vencida, vitória. Com o resultado decidido, a partida congela.
+ * Com o 2x ligado, o jogo avança o dobro ('passo'), mas o relógio da
+ * partida e os avisos seguem o tempo real ('dt'). */
 void partida_atualizar(Partida *partida, Vector2 mouse, float dt)
 {
     if (partida->resultado != PARTIDA_EM_ANDAMENTO) return;
@@ -384,8 +395,8 @@ void partida_atualizar(Partida *partida, Vector2 mouse, float dt)
     agir_cachorros(partida, passo);
     if (!partida_eh_tutorial(partida)) horda_atualizar(&partida->hordas, &partida->gatos, passo);
     projetil_atualizar_lista(&partida->projeteis, partida->gatos, passo);
-    if (gato_atualizar_lista(&partida->gatos, &partida->mapa, passo))             partida->resultado = PARTIDA_DERROTA;
-    else if (!partida_eh_tutorial(partida) && horda_terminou(&partida->hordas)) partida->resultado = PARTIDA_VITORIA;
+    if (gato_atualizar_lista(&partida->gatos, &partida->mapa, passo)) partida->resultado = PARTIDA_DERROTA;
+    else if (fase_vencida(partida))                                   partida->resultado = PARTIDA_VITORIA;
 
     soltar_petisco_do_ceu(partida, passo);
     petisco_atualizar_lista(&partida->petiscos, passo);
@@ -547,8 +558,8 @@ static void desenhar_mensagem(const Partida *partida)
     ui_texto_centro(texto, LARGURA_VIRTUAL / 2, 74, FONTE_PEQUENA, cor);
 
     int passo = partida->passoTutorial;
-    if (partida_eh_tutorial(partida) && partida->timerAviso <= 0.0f && passo >= TUTORIAL_POTE && passo <= TUTORIAL_PA) {
-        Rectangle alvos[] = { { 0 }, retangulo_carta(0), retangulo_carta(1), RET_PA };
+    if (partida_eh_tutorial(partida) && partida->timerAviso <= 0.0f && passo >= TUTORIAL_POTE) {
+        Rectangle alvos[] = { { 0 }, retangulo_carta(0), retangulo_carta(1), RET_PA, retangulo_carta(1) };
         DrawRectangleLinesEx(alvos[passo], 3, COR_PETISCO);
     }
 }

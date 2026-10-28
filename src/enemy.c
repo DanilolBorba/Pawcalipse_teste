@@ -140,6 +140,20 @@ Gato *gato_atingido(Gato *lista, int linha, float x)
     return NULL;
 }
 
+/* gato_empurrar_area: faz todos os gatos vivos da linha cujo centro esteja
+ * entre xMin e xMax recuarem 'distancia' pixels para a direita (o susto do
+ * grito do Shiba). Retorna quantos recuaram (0 se nenhum). */
+int gato_empurrar_area(Gato *lista, int linha, float xMin, float xMax, float distancia)
+{
+    int empurrados = 0;
+    for (Gato *g = lista; g != NULL; g = g->proximo) {
+        if (g->linha != linha || g->vida <= 0 || g->x < xMin || g->x > xMax) continue;
+        g->x += distancia;
+        empurrados++;
+    }
+    return empurrados;
+}
+
 /* gato_ferir_area: fere com 'dano' todos os gatos vivos da linha cujo centro
  * esteja entre xMin e xMax (mordidas e explosões). Retorna quantos foram
  * atingidos (0 se nenhum). */
