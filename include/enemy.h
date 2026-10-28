@@ -58,6 +58,7 @@ bool  gato_atualizar_lista(Gato **lista, Mapa *mapa, float dt);    // anda/morde
 bool  gato_na_mira(const Gato *lista, int linha, float x);         // true se há um gato visível na linha, à direita de x
 Gato *gato_atingido(Gato *lista, int linha, float x);              // gato vivo da linha que ocupa o ponto x (NULL se nenhum)
 int   gato_ferir_area(Gato *lista, int linha, float xMin, float xMax, int dano);  // fere os gatos da linha entre xMin e xMax; retorna quantos
+int   gato_empurrar_area(Gato *lista, int linha, float xMin, float xMax, float distancia);  // faz os gatos da área recuarem; retorna quantos
 void  gato_ferir(Gato *gato, int dano);                            // tira vida e muda a cor por um instante
 void  gato_gelar(Gato *gato);                                      // deixa o gato lento (se não for imune)
 void  gato_desenhar_lista(const Gato *lista);                      // desenha todos os gatos

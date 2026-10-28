@@ -13,7 +13,8 @@
 #include "tower.h"
 #include <stdbool.h>
 
-#define MAX_CARTAS         6     // Pote de Ração + 5 cachorros do deck
+#define TAMANHO_DECK       5     // cachorros que o jogador escolhe antes da fase
+#define MAX_CARTAS         (TAMANHO_DECK + 1)   // o Pote de Ração vem sempre junto
 #define PETISCOS_INICIAIS  200
 #define FASE_TUTORIAL      0
 #define MAX_EFEITOS        8     // explosões/curas na tela ao mesmo tempo
@@ -21,7 +22,7 @@
 
 typedef enum ResultadoPartida {
     PARTIDA_EM_ANDAMENTO,
-    PARTIDA_VITORIA,       // as 4 hordas foram vencidas
+    PARTIDA_VITORIA,       // as 4 hordas (ou o gato do tutorial) foram vencidas
     PARTIDA_DERROTA        // um gato invadiu a casa
 } ResultadoPartida;
 
@@ -46,7 +47,6 @@ typedef struct Partida {
     int      saldo;              // petiscos disponíveis para gastar
     Carta    cartas[MAX_CARTAS]; // [0] é sempre o Pote de Ração
     int      totalCartas;
-    int      deckTeste;          // deck provisório em uso (TAB troca; até a escolha de deck)
     Efeito   efeitos[MAX_EFEITOS];
     int      cartaSelecionada;   // índice em cartas[], ou -1
     bool     paSelecionada;
@@ -63,7 +63,7 @@ typedef struct Partida {
     float    timerAviso;         // segundos restantes do aviso
 } Partida;
 
-Partida *partida_criar(int fase);                                   // aloca a partida (NULL se faltar memória)
+Partida *partida_criar(int fase, const TipoCachorro deck[TAMANHO_DECK]);  // aloca a partida com o deck (NULL se faltar memória)
 void partida_atualizar(Partida *partida, Vector2 mouse, float dt);  // entrada do jogador, petiscos e recargas
 void partida_desenhar(const Partida *partida, Vector2 mouse);       // campo, barra superior e petiscos
 void partida_destruir(Partida *partida);                            // libera a partida e tudo o que ela alocou

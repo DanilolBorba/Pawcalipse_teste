@@ -7,9 +7,13 @@
 
 #define ALCANCE_PASTOR  (1.5f * TAMANHO_CELULA)   // até onde a mordida do Pastor Alemão alcança
 #define RAIO_3X3        (1.5f * TAMANHO_CELULA)   // metade da largura da área 3x3
+#define ALCANCE_GRITO   (2.5f * TAMANHO_CELULA)   // até onde o grito do Shiba Inu assusta
+#define RECUO_GRITO     (0.5f * TAMANHO_CELULA)   // quanto os gatos assustados recuam
 
 static const Color COR_EXPLOSAO = { 255, 150,  40, 255 };
 static const Color COR_CURA     = { 130, 230, 120, 255 };
+static const Color COR_TERRA    = { 170, 130,  90, 255 };
+static const Color COR_GRITO    = { 255, 225, 120, 255 };
 
 /* centro_do: centro da célula onde o cachorro está. */
 static Vector2 centro_do(const Cachorro *cachorro)
@@ -84,17 +88,30 @@ static bool morder(Partida *partida, Cachorro *cachorro)
     return gato_ferir_area(partida->gatos, cachorro->linha, x - RAIO_GATO, x + ALCANCE_PASTOR, cachorro_info(cachorro->tipo)->dano) > 0;
 }
 
-/* explodir_mina: o Chihuahua (só chamado depois de armado) explode quando um
- * gato chega à sua célula: fere os gatos dali e some (vida 0, o mapa o
- * remove). Sem gato por perto, continua esperando. */
-static bool explodir_mina(Partida *partida, Cachorro *cachorro)
+/* atacar_da_toca: o Westie, um terrier, passa os primeiros segundos cavando
+ * uma toca (só depois disso esta função é chamada). Quando um gato chega à
+ * sua célula, ele salta da toca, fere os gatos dali e volta para casa (vida
+ * 0, o mapa o remove). Sem gato por perto, continua escondido esperando. */
+static bool atacar_da_toca(Partida *partida, Cachorro *cachorro)
 {
     Rectangle celula = mapa_retangulo_celula(cachorro->linha, cachorro->coluna);
     float xMax = celula.x + celula.width + RAIO_GATO;
     if (gato_ferir_area(partida->gatos, cachorro->linha, celula.x, xMax, cachorro_info(cachorro->tipo)->dano) == 0) return false;
 
     cachorro->vida = 0;
-    partida_adicionar_efeito(partida, centro_do(cachorro), TAMANHO_CELULA * 0.6f, COR_EXPLOSAO);
+    partida_adicionar_efeito(partida, centro_do(cachorro), TAMANHO_CELULA * 0.6f, COR_TERRA);
+    return true;
+}
+
+/* gritar: o Shiba Inu solta o famoso "grito Shiba" quando há gato na sua
+ * linha até 2,5 células à frente: o susto faz esses gatos recuarem meia
+ * célula. Age só se assustar alguém. */
+static bool gritar(Partida *partida, Cachorro *cachorro)
+{
+    Vector2 centro = centro_do(cachorro);
+    if (gato_empurrar_area(partida->gatos, cachorro->linha, centro.x, centro.x + ALCANCE_GRITO, RECUO_GRITO) == 0) return false;
+
+    partida_adicionar_efeito(partida, centro, TAMANHO_CELULA * 0.8f, COR_GRITO);
     return true;
 }
 
@@ -137,10 +154,11 @@ static const Habilidade habilidades[TOTAL_TIPOS_CACHORRO] = {
     [TIPO_DALMATA]       = atirar_duplo,
     [TIPO_HUSKY]         = atirar_gelo,
     [TIPO_PASTOR_ALEMAO] = morder,
-    [TIPO_CHIHUAHUA]     = explodir_mina,
+    [TIPO_WESTIE]        = atacar_da_toca,
     [TIPO_SAO_BERNARDO]  = curar_vizinhos,
     [TIPO_DACHSHUND]     = atirar_tres_linhas,
     [TIPO_ROTTWEILER]    = explodir_area,
+    [TIPO_SHIBA]         = gritar,
 };
 
 /* habilidade_usar: busca na tabela o ponteiro da função da raça e a chama.
