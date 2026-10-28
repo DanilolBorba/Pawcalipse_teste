@@ -1,5 +1,5 @@
 /* partida.c - Uma partida: cartas, petiscos, colocação de cachorros, pá,
- * combate contra os gatos e tutorial. */
+ * luva, velocidade 2x, combate contra os gatos e tutorial. */
 
 #include "partida.h"
 #include "cenario.h"
@@ -15,8 +15,13 @@
 #define DURACAO_EFEITO   0.35f
 #define PETISCOS_TESTE   100    // ganhos com a tecla ']' (atalho de teste)
 
+#define INFO_X           480    // começo da área de fase, tempo e hordas na barra superior
+#define INFO_FIM         586
+
 static const Rectangle RET_CONTADOR = { 8, 8, 56, 52 };
-static const Rectangle RET_PA = { 380, 8, 46, 52 };
+static const Rectangle RET_PA = { 376, 8, 46, 52 };
+static const Rectangle RET_LUVA = { 426, 8, 46, 52 };
+static const Rectangle RET_ACELERAR = { 592, 8, 40, 52 };
 
 static const TipoCachorro deckTutorial[] = { TIPO_POTE_RACAO, TIPO_BEAGLE, TIPO_BULLDOG };
 static const TipoCachorro decksTeste[2][MAX_CARTAS] = {   // provisórios, até a escolha de deck (Etapa 6)
@@ -65,8 +70,9 @@ static void montar_deck(Partida *partida, const TipoCachorro deck[], int total)
 
 /* partida_criar: aloca a partida com malloc, zera tudo e prepara o campo
  * vazio, as listas de petiscos, gatos e bolinhas vazias, o saldo inicial,
- * as hordas da fase (o tutorial não tem) e o deck (fixo por enquanto: o do
- * tutorial ou o 1º deck de teste). Retorna NULL se faltar memória. */
+ * a luva com todos os usos, as hordas da fase (o tutorial não tem) e o deck
+ * (fixo por enquanto: o do tutorial ou o 1º deck de teste). Retorna NULL se
+ * faltar memória. */
 Partida *partida_criar(int fase)
 {
     Partida *partida = malloc(sizeof(Partida));
@@ -81,6 +87,8 @@ Partida *partida_criar(int fase)
     partida->saldo = PETISCOS_INICIAIS;
     partida->timerPetiscoCeu = (fase == FASE_TUTORIAL) ? 1.0f : 5.0f;
     partida->resultado = PARTIDA_EM_ANDAMENTO;
+    partida->usosLuva = USOS_LUVA;
+    partida->luvaLinha = -1;
 
     if (fase == FASE_TUTORIAL) {
         montar_deck(partida, deckTutorial, TAMANHO(deckTutorial));
@@ -171,18 +179,80 @@ static void desenhar_efeitos(const Partida *partida)
     }
 }
 
-/* selecionar_carta: marca a carta i para ser colocada no campo. Clicar de
- * novo na mesma carta desmarca. Avisa se ela estiver recarregando ou se não
- * houver petiscos suficientes. */
+/* cancelar_selecao: desmarca a carta, a pá e a luva (soltando o cachorro
+ * que ela tiver pegado, sem gastar um uso). */
+static void cancelar_selecao(Partida *partida)
+{
+    partida->cartaSelecionada = -1;
+    partida->paSelecionada = false;
+    partida->luvaSelecionada = false;
+    partida->luvaLinha = -1;
+}
+
+/* selecionar_carta: marca a carta i para ser colocada no campo (desmarcando
+ * a pá e a luva). Clicar de novo na mesma carta desmarca. Avisa se ela
+ * estiver recarregando ou se não houver petiscos suficientes. */
 static void selecionar_carta(Partida *partida, int i)
 {
     const Carta *carta = &partida->cartas[i];
+    bool jaSelecionada = (partida->cartaSelecionada == i);
 
-    partida->paSelecionada = false;
-    if (partida->cartaSelecionada == i)                          partida->cartaSelecionada = -1;
-    else if (carta->recarga > 0.0f)                              avisar(partida, "Carta recarregando!");
+    cancelar_selecao(partida);
+    if (jaSelecionada) return;
+    if (carta->recarga > 0.0f)                                   avisar(partida, "Carta recarregando!");
     else if (partida->saldo < cachorro_info(carta->tipo)->custo) avisar(partida, "Petiscos insuficientes!");
     else                                                         partida->cartaSelecionada = i;
+}
+
+/* alternar_pa: pega a pá (desmarcando o resto) ou a larga, se já estava com ela. */
+static void alternar_pa(Partida *partida)
+{
+    bool pegar = !partida->paSelecionada;
+    cancelar_selecao(partida);
+    partida->paSelecionada = pegar;
+}
+
+/* alternar_luva: pega a luva (desmarcando o resto) ou a larga, se já estava
+ * com ela. Se os usos acabaram, só avisa. */
+static void alternar_luva(Partida *partida)
+{
+    bool pegar = !partida->luvaSelecionada;
+    cancelar_selecao(partida);
+    if (pegar && partida->usosLuva <= 0) avisar(partida, "Acabaram os usos da luva!");
+    else                                 partida->luvaSelecionada = pegar;
+}
+
+/* cachorro_na_luva: retorna o cachorro pego pela luva, ou NULL se ela
+ * estiver vazia (ou se ele morreu enquanto estava pego). */
+static Cachorro *cachorro_na_luva(const Partida *partida)
+{
+    if (!partida->luvaSelecionada || partida->luvaLinha < 0) return NULL;
+    return partida->mapa.grade[partida->luvaLinha][partida->luvaColuna];
+}
+
+/* usar_luva: com a luva vazia, clicar num cachorro o pega (ele só fica
+ * marcado). Com um cachorro pego, clicar numa célula livre o muda para lá e
+ * gasta um uso; clicar nele mesmo (ou ele ter morrido) o solta sem gastar. */
+static void usar_luva(Partida *partida, int linha, int coluna)
+{
+    if (partida->luvaLinha < 0) {
+        if (partida->mapa.grade[linha][coluna] == NULL) return;
+        partida->luvaLinha = linha;
+        partida->luvaColuna = coluna;
+        return;
+    }
+
+    Cachorro *cachorro = cachorro_na_luva(partida);
+    if (cachorro == NULL || (linha == cachorro->linha && coluna == cachorro->coluna)) {
+        partida->luvaLinha = -1;
+        return;
+    }
+    if (!mapa_mover(&partida->mapa, cachorro, linha, coluna)) {
+        avisar(partida, "Esse espaço já está ocupado!");
+        return;
+    }
+    partida->usosLuva--;
+    cancelar_selecao(partida);
 }
 
 /* colocar_cachorro: cria o cachorro da carta selecionada (malloc) e o guarda
@@ -224,27 +294,59 @@ static void tratar_atalhos_teste(Partida *partida)
     }
 }
 
-/* tratar_entrada: lê os atalhos de teste, o teclado (1 a 6 escolhem cartas,
- * S pega a pá, botão direito cancela) e o clique esquerdo, nesta ordem de
- * prioridade: coletar petisco, escolher carta, pegar a pá e, por fim, agir
- * no campo (colocar o cachorro selecionado ou remover com a pá). */
-static void tratar_entrada(Partida *partida, Vector2 mouse)
+/* tratar_teclas: atalhos do teclado: 1 a 6 escolhem cartas, S pega a pá,
+ * L pega a luva, V liga/desliga o 2x e o botão direito cancela a seleção. */
+static void tratar_teclas(Partida *partida)
 {
-    tratar_atalhos_teste(partida);
-    if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-        partida->cartaSelecionada = -1;
-        partida->paSelecionada = false;
-    }
+    if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) cancelar_selecao(partida);
     for (int i = 0; i < partida->totalCartas; i++) {
         if (IsKeyPressed(KEY_ONE + i)) selecionar_carta(partida, i);
     }
-    bool clicou = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-    if (IsKeyPressed(KEY_S) || (clicou && CheckCollisionPointRec(mouse, RET_PA))) {
-        partida->paSelecionada = !partida->paSelecionada;
-        partida->cartaSelecionada = -1;
-        return;
+    if (IsKeyPressed(KEY_S)) alternar_pa(partida);
+    if (IsKeyPressed(KEY_L)) alternar_luva(partida);
+    if (IsKeyPressed(KEY_V)) partida->acelerada = !partida->acelerada;
+}
+
+/* clicar_na_barra: trata um clique nos botões da barra superior (cartas,
+ * pá, luva e 2x). Retorna true se o clique foi num deles. */
+static bool clicar_na_barra(Partida *partida, Vector2 mouse)
+{
+    for (int i = 0; i < partida->totalCartas; i++) {
+        if (CheckCollisionPointRec(mouse, retangulo_carta(i))) {
+            selecionar_carta(partida, i);
+            return true;
+        }
     }
-    if (!clicou) return;
+    if (CheckCollisionPointRec(mouse, RET_PA))            alternar_pa(partida);
+    else if (CheckCollisionPointRec(mouse, RET_LUVA))     alternar_luva(partida);
+    else if (CheckCollisionPointRec(mouse, RET_ACELERAR)) partida->acelerada = !partida->acelerada;
+    else return false;
+    return true;
+}
+
+/* clicar_no_campo: age na célula clicada conforme o que está selecionado:
+ * remove o cachorro com a pá, move com a luva ou coloca o da carta. */
+static void clicar_no_campo(Partida *partida, int linha, int coluna)
+{
+    if (partida->paSelecionada) {
+        if (partida->mapa.grade[linha][coluna] != NULL) avancar_tutorial(partida, TUTORIAL_PA);
+        mapa_remover(&partida->mapa, linha, coluna);
+        partida->paSelecionada = false;
+    } else if (partida->luvaSelecionada) {
+        usar_luva(partida, linha, coluna);
+    } else if (partida->cartaSelecionada >= 0) {
+        colocar_cachorro(partida, linha, coluna);
+    }
+}
+
+/* tratar_entrada: lê os atalhos (de teste e do jogo) e o clique esquerdo,
+ * nesta ordem de prioridade: coletar petisco, botões da barra superior e,
+ * por fim, a célula do campo. */
+static void tratar_entrada(Partida *partida, Vector2 mouse)
+{
+    tratar_atalhos_teste(partida);
+    tratar_teclas(partida);
+    if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) return;
 
     int valor = petisco_coletar(&partida->petiscos, mouse);
     if (valor > 0) {
@@ -252,22 +354,10 @@ static void tratar_entrada(Partida *partida, Vector2 mouse)
         avancar_tutorial(partida, TUTORIAL_COLETAR);
         return;
     }
-    for (int i = 0; i < partida->totalCartas; i++) {
-        if (CheckCollisionPointRec(mouse, retangulo_carta(i))) {
-            selecionar_carta(partida, i);
-            return;
-        }
-    }
+    if (clicar_na_barra(partida, mouse)) return;
 
     int linha, coluna;
-    if (!mapa_celula_no_ponto(mouse, &linha, &coluna)) return;
-    if (partida->paSelecionada) {
-        if (partida->mapa.grade[linha][coluna] != NULL) avancar_tutorial(partida, TUTORIAL_PA);
-        mapa_remover(&partida->mapa, linha, coluna);
-        partida->paSelecionada = false;
-    } else if (partida->cartaSelecionada >= 0) {
-        colocar_cachorro(partida, linha, coluna);
-    }
+    if (mapa_celula_no_ponto(mouse, &linha, &coluna)) clicar_no_campo(partida, linha, coluna);
 }
 
 /* partida_atualizar: avança o tempo da partida, o aviso, os efeitos e a
@@ -275,28 +365,30 @@ static void tratar_entrada(Partida *partida, Vector2 mouse)
  * (fora do tutorial), move as bolinhas e os gatos, gera e move os petiscos
  * e trata a entrada do jogador. Se um gato invadir a casa, é derrota; se as
  * 4 hordas forem vencidas, vitória. Com o resultado decidido, a partida
- * congela. */
+ * congela. Com o 2x ligado, o jogo avança o dobro ('passo'), mas o relógio
+ * da partida e os avisos seguem o tempo real ('dt'). */
 void partida_atualizar(Partida *partida, Vector2 mouse, float dt)
 {
     if (partida->resultado != PARTIDA_EM_ANDAMENTO) return;
 
+    float passo = partida->acelerada ? dt * 2.0f : dt;
     partida->tempoJogado += dt;
     if (partida->timerAviso > 0.0f) partida->timerAviso -= dt;
     for (int i = 0; i < MAX_EFEITOS; i++) {
-        if (partida->efeitos[i].tempo > 0.0f) partida->efeitos[i].tempo -= dt;
+        if (partida->efeitos[i].tempo > 0.0f) partida->efeitos[i].tempo -= passo;
     }
     for (int i = 0; i < partida->totalCartas; i++) {
-        if (partida->cartas[i].recarga > 0.0f) partida->cartas[i].recarga -= dt;
+        if (partida->cartas[i].recarga > 0.0f) partida->cartas[i].recarga -= passo;
     }
 
-    agir_cachorros(partida, dt);
-    if (!partida_eh_tutorial(partida)) horda_atualizar(&partida->hordas, &partida->gatos, dt);
-    projetil_atualizar_lista(&partida->projeteis, partida->gatos, dt);
-    if (gato_atualizar_lista(&partida->gatos, &partida->mapa, dt))                partida->resultado = PARTIDA_DERROTA;
+    agir_cachorros(partida, passo);
+    if (!partida_eh_tutorial(partida)) horda_atualizar(&partida->hordas, &partida->gatos, passo);
+    projetil_atualizar_lista(&partida->projeteis, partida->gatos, passo);
+    if (gato_atualizar_lista(&partida->gatos, &partida->mapa, passo))             partida->resultado = PARTIDA_DERROTA;
     else if (!partida_eh_tutorial(partida) && horda_terminou(&partida->hordas)) partida->resultado = PARTIDA_VITORIA;
 
-    soltar_petisco_do_ceu(partida, dt);
-    petisco_atualizar_lista(&partida->petiscos, dt);
+    soltar_petisco_do_ceu(partida, passo);
+    petisco_atualizar_lista(&partida->petiscos, passo);
     tratar_entrada(partida, mouse);
 }
 
@@ -320,22 +412,69 @@ static void desenhar_carta(const Partida *partida, int i)
     DrawRectangleLinesEx(r, 2, (partida->cartaSelecionada == i) ? COR_INFECTADO : COR_BORDA);
 }
 
-/* desenhar_progresso: "Horda N/4" e uma barra que enche conforme os gatos
- * da fase vão saindo (não aparece no tutorial). */
-static void desenhar_progresso(const Partida *partida)
+/* desenhar_botao: fundo e borda de um botão da barra superior (pá, luva,
+ * 2x): verde e com borda clara enquanto estiver ativo. */
+static void desenhar_botao(Rectangle r, bool ativo)
 {
+    DrawRectangleRec(r, ativo ? (Color){ 120, 150, 90, 255 } : (Color){ 110, 100, 96, 255 });
+    DrawRectangleLinesEx(r, 2, ativo ? COR_INFECTADO : COR_BORDA);
+}
+
+/* desenhar_ferramentas: os botões da pá e da luva (provisórios, só com o
+ * nome e a tecla). A luva mostra um quadradinho por uso que ainda resta e
+ * fica escurecida quando os usos acabam. */
+static void desenhar_ferramentas(const Partida *partida)
+{
+    desenhar_botao(RET_PA, partida->paSelecionada);
+    ui_texto_centro("Pá", RET_PA.x + 23, 18, FONTE_MEDIA, COR_TEXTO);
+    ui_texto_centro("(S)", RET_PA.x + 23, 42, FONTE_PEQUENA, COR_TEXTO);
+
+    desenhar_botao(RET_LUVA, partida->luvaSelecionada);
+    ui_texto_centro("Luva", RET_LUVA.x + 23, 16, FONTE_PEQUENA, COR_TEXTO);
+    for (int i = 0; i < USOS_LUVA; i++) {
+        Color cor = (i < partida->usosLuva) ? COR_PETISCO : COR_SOMBRA;
+        DrawRectangle(RET_LUVA.x + 23 - USOS_LUVA * 5 + i * 10 + 1, 30, 8, 8, cor);
+    }
+    ui_texto_centro("(L)", RET_LUVA.x + 23, 42, FONTE_PEQUENA, COR_TEXTO);
+    if (partida->usosLuva <= 0) DrawRectangleRec(RET_LUVA, Fade(BLACK, 0.45f));
+}
+
+/* desenhar_botao_acelerar: o botão do 2x, com o ícone de avançar (dois
+ * triângulos apontando para a direita); fica verde com o jogo acelerado. */
+static void desenhar_botao_acelerar(const Partida *partida)
+{
+    Rectangle r = RET_ACELERAR;
+    float centroY = r.y + 20;
+
+    desenhar_botao(r, partida->acelerada);
+    for (int i = 0; i < 2; i++) {
+        float x = r.x + 10 + i * 10;
+        DrawTriangle((Vector2){ x, centroY - 7 }, (Vector2){ x, centroY + 7 }, (Vector2){ x + 10, centroY }, COR_TEXTO);
+    }
+    ui_texto_centro("2x (V)", r.x + r.width / 2, r.y + 36, FONTE_PEQUENA, COR_TEXTO);
+}
+
+/* desenhar_info: área entre a luva e o 2x: a fase, o tempo e, fora do
+ * tutorial, "Horda N/4" com a barra que enche conforme os gatos da fase vão
+ * saindo; por último, o lembrete do ESC. */
+static void desenhar_info(const Partida *partida)
+{
+    int s = (int)partida->tempoJogado;
+    ui_texto(partida_eh_tutorial(partida) ? "TUTORIAL" : TextFormat("FASE %d", partida->fase), INFO_X, 8, FONTE_MEDIA, COR_INFECTADO);
+    ui_texto(TextFormat("%02d:%02d", s / 60, s % 60), INFO_X, 30, FONTE_PEQUENA, COR_TEXTO);
+    ui_texto("ESC: pausa", INFO_X, 51, FONTE_PEQUENA, COR_BLOQUEADO);
     if (partida_eh_tutorial(partida)) return;
 
-    Rectangle barra = { 440, 43, 186, 5 };
-    ui_texto(TextFormat("Horda %d/%d", horda_numero(&partida->hordas), HORDAS_POR_FASE), 566, 30, FONTE_PEQUENA, COR_TEXTO);
+    const char *horda = TextFormat("Horda %d/%d", horda_numero(&partida->hordas), HORDAS_POR_FASE);
+    Rectangle barra = { INFO_X, 43, INFO_FIM - INFO_X, 5 };
+    ui_texto(horda, INFO_FIM - MeasureText(horda, FONTE_PEQUENA), 30, FONTE_PEQUENA, COR_TEXTO);
     DrawRectangleRec(barra, COR_SOMBRA);
     DrawRectangle(barra.x, barra.y, barra.width * horda_progresso(&partida->hordas), barra.height, COR_SANGUE);
 }
 
-/* desenhar_hud: barra superior com o contador de petiscos, as cartas, o
- * botão da pá e, à direita, a fase, o tempo, o progresso das hordas e o
- * nome da carta sob o mouse. */
-static void desenhar_hud(const Partida *partida, Vector2 mouse)
+/* desenhar_hud: barra superior com o contador de petiscos, as cartas, a pá,
+ * a luva, as informações da partida e o botão do 2x. */
+static void desenhar_hud(const Partida *partida)
 {
     ui_desenhar_painel((Rectangle){ 4, 4, 632, 60 });
     DrawRectangleRec(RET_CONTADOR, (Color){ 52, 36, 30, 255 });
@@ -343,42 +482,46 @@ static void desenhar_hud(const Partida *partida, Vector2 mouse)
     ui_texto_centro(TextFormat("%d", partida->saldo), 36, 38, FONTE_MEDIA, COR_TEXTO);
 
     for (int i = 0; i < partida->totalCartas; i++) desenhar_carta(partida, i);
-
-    DrawRectangleRec(RET_PA, partida->paSelecionada ? (Color){ 120, 150, 90, 255 } : (Color){ 110, 100, 96, 255 });
-    DrawRectangleLinesEx(RET_PA, 2, partida->paSelecionada ? COR_INFECTADO : COR_BORDA);
-    ui_texto_centro("Pá", RET_PA.x + 23, 18, FONTE_MEDIA, COR_TEXTO);
-    ui_texto_centro("(S)", RET_PA.x + 23, 42, FONTE_PEQUENA, COR_TEXTO);
-
-    int s = (int)partida->tempoJogado;
-    ui_texto(partida_eh_tutorial(partida) ? "TUTORIAL" : TextFormat("FASE %d", partida->fase), 440, 8, FONTE_MEDIA, COR_INFECTADO);
-    ui_texto(TextFormat("Tempo: %02d:%02d", s / 60, s % 60), 440, 30, FONTE_PEQUENA, COR_TEXTO);
-    desenhar_progresso(partida);
-
-    const char *dica = "ESC: pausa";
-    for (int i = 0; i < partida->totalCartas; i++) {
-        const InfoCachorro *info = cachorro_info(partida->cartas[i].tipo);
-        if (CheckCollisionPointRec(mouse, retangulo_carta(i))) dica = TextFormat("%s - %s", info->nome, info->papel);
-    }
-    ui_texto(dica, 440, 51, FONTE_PEQUENA, COR_BLOQUEADO);
+    desenhar_ferramentas(partida);
+    desenhar_info(partida);
+    desenhar_botao_acelerar(partida);
 }
 
-/* desenhar_previa: destaca a célula sob o mouse. Com uma carta selecionada,
- * mostra o cachorro transparente onde ele será colocado; com carta ou pá,
- * pinta de vermelho uma célula ocupada (onde não dá para colocar ou de onde
- * o cachorro será removido). */
+/* desenhar_dica_carta: com o mouse sobre uma carta, mostra logo abaixo dela
+ * uma caixinha com o nome e o papel do cachorro. */
+static void desenhar_dica_carta(const Partida *partida, Vector2 mouse)
+{
+    for (int i = 0; i < partida->totalCartas; i++) {
+        if (!CheckCollisionPointRec(mouse, retangulo_carta(i))) continue;
+
+        const InfoCachorro *info = cachorro_info(partida->cartas[i].tipo);
+        const char *texto = TextFormat("%s - %s", info->nome, info->papel);
+        Rectangle caixa = { retangulo_carta(i).x, 66, MeasureText(texto, FONTE_PEQUENA) + 8, 14 };
+        DrawRectangleRec(caixa, Fade(BLACK, 0.85f));
+        DrawRectangleLinesEx(caixa, 1, COR_PETISCO);
+        ui_texto(texto, caixa.x + 4, caixa.y + 2, FONTE_PEQUENA, COR_TEXTO);
+    }
+}
+
+/* desenhar_previa: marca de laranja a célula do cachorro pego pela luva e
+ * destaca a célula sob o mouse. Com uma carta (ou um cachorro na luva),
+ * mostra o cachorro transparente onde ele vai ficar; pinta de vermelho uma
+ * célula ocupada onde não dá para colocar, ou de onde a pá vai remover. */
 static void desenhar_previa(const Partida *partida, Vector2 mouse)
 {
+    const Cachorro *naLuva = cachorro_na_luva(partida);
+    if (naLuva != NULL) DrawRectangleLinesEx(mapa_retangulo_celula(naLuva->linha, naLuva->coluna), 3, COR_PETISCO);
+
     int linha, coluna;
     if (!mapa_celula_no_ponto(mouse, &linha, &coluna)) return;
 
     Rectangle r = mapa_retangulo_celula(linha, coluna);
     bool ocupada = partida->mapa.grade[linha][coluna] != NULL;
-    bool selecionando = partida->paSelecionada || partida->cartaSelecionada >= 0;
+    bool selecionando = partida->paSelecionada || partida->luvaSelecionada || partida->cartaSelecionada >= 0;
+    int tipo = (partida->cartaSelecionada >= 0) ? (int)partida->cartas[partida->cartaSelecionada].tipo : (naLuva ? (int)naLuva->tipo : -1);
 
-    if (partida->cartaSelecionada >= 0 && !ocupada) {
-        cachorro_desenhar(partida->cartas[partida->cartaSelecionada].tipo, mapa_centro_celula(linha, coluna), RAIO_CACHORRO, 0, Fade(WHITE, 0.5f));
-    }
-    if (selecionando && ocupada) DrawRectangleRec(r, Fade(COR_ALERTA, 0.35f));
+    if (tipo >= 0 && !ocupada) cachorro_desenhar((TipoCachorro)tipo, mapa_centro_celula(linha, coluna), RAIO_CACHORRO, 0, Fade(WHITE, 0.5f));
+    if (ocupada && (partida->paSelecionada || tipo >= 0)) DrawRectangleRec(r, Fade(COR_ALERTA, 0.35f));
     DrawRectangleLinesEx(r, 2, selecionando ? COR_INFECTADO : Fade(WHITE, 0.25f));
 }
 
@@ -420,8 +563,9 @@ static void desenhar_anuncio_horda(const Partida *partida)
 
 /* partida_desenhar: desenha, de trás para a frente, o céu e os prédios atrás
  * da barra, o campo com os cachorros, os gatos, as bolinhas, as explosões e
- * curas, a prévia sob o mouse, a barra superior, a faixa de mensagens, o
- * anúncio da horda e os petiscos (por cima de tudo). */
+ * curas, a prévia sob o mouse, a barra superior, a faixa de mensagens, a
+ * dica da carta sob o mouse, o anúncio da horda e os petiscos (por cima de
+ * tudo). */
 void partida_desenhar(const Partida *partida, Vector2 mouse)
 {
     cenario_desenhar_ceu(MAPA_Y, partida->tempoJogado);
@@ -431,8 +575,9 @@ void partida_desenhar(const Partida *partida, Vector2 mouse)
     projetil_desenhar_lista(partida->projeteis);
     desenhar_efeitos(partida);
     desenhar_previa(partida, mouse);
-    desenhar_hud(partida, mouse);
+    desenhar_hud(partida);
     desenhar_mensagem(partida);
+    desenhar_dica_carta(partida, mouse);
     desenhar_anuncio_horda(partida);
     petisco_desenhar_lista(partida->petiscos, partida->tempoJogado);
 }

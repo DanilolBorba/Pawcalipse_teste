@@ -25,6 +25,7 @@ Rectangle mapa_retangulo_celula(int linha, int coluna);                  // áre
 Vector2   mapa_centro_celula(int linha, int coluna);                     // centro da célula na tela
 bool      mapa_colocar(Mapa *mapa, Cachorro *cachorro);                  // guarda o cachorro na célula dele (false se ocupada)
 void      mapa_remover(Mapa *mapa, int linha, int coluna);               // libera o cachorro e esvazia a célula
+bool      mapa_mover(Mapa *mapa, Cachorro *cachorro, int linha, int coluna);  // muda o cachorro de célula (false se o destino estiver ocupado)
 void      mapa_desenhar(const Mapa *mapa);                               // gramado, casa, rua e cachorros
 
 #endif

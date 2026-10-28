@@ -76,6 +76,20 @@ void mapa_remover(Mapa *mapa, int linha, int coluna)
     mapa->grade[linha][coluna] = NULL;
 }
 
+/* mapa_mover: passa o ponteiro do cachorro da célula atual para a célula de
+ * destino e atualiza a posição guardada nele (vida e timer continuam os
+ * mesmos). Retorna false, sem mover, se o destino estiver ocupado. */
+bool mapa_mover(Mapa *mapa, Cachorro *cachorro, int linha, int coluna)
+{
+    if (mapa->grade[linha][coluna] != NULL) return false;
+
+    mapa->grade[cachorro->linha][cachorro->coluna] = NULL;
+    cachorro->linha = linha;
+    cachorro->coluna = coluna;
+    mapa->grade[linha][coluna] = cachorro;
+    return true;
+}
+
 /* desenhar_cachorro_no_campo: desenha o cachorro no centro da sua célula,
  * no quadro atual da animação (o Chihuahua fica escuro até a mina armar)
  * e, se ele estiver ferido, a barra de vida logo acima. */

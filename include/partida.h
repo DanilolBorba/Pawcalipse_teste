@@ -17,6 +17,7 @@
 #define PETISCOS_INICIAIS  200
 #define FASE_TUTORIAL      0
 #define MAX_EFEITOS        8     // explosões/curas na tela ao mesmo tempo
+#define USOS_LUVA          2     // vezes que a luva pode ser usada por partida
 
 typedef enum ResultadoPartida {
     PARTIDA_EM_ANDAMENTO,
@@ -49,7 +50,11 @@ typedef struct Partida {
     Efeito   efeitos[MAX_EFEITOS];
     int      cartaSelecionada;   // índice em cartas[], ou -1
     bool     paSelecionada;
-    float    tempoJogado;        // segundos de partida
+    bool     luvaSelecionada;
+    int      usosLuva;           // usos da luva que ainda restam
+    int      luvaLinha, luvaColuna;   // cachorro pego pela luva (luvaLinha -1 = nenhum)
+    bool     acelerada;          // true = jogo em 2x
+    float    tempoJogado;        // segundos de partida (tempo real, mesmo em 2x)
     float    timerPetiscoCeu;    // segundos até o próximo petisco do céu
     Hordas   hordas;             // as 4 hordas da fase (não usadas no tutorial)
     ResultadoPartida resultado;  // em andamento, vitória ou derrota

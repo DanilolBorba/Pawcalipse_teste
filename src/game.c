@@ -265,6 +265,8 @@ static void desenhar_instrucoes(const Jogo *jogo)
         "- Cada cachorro custa petiscos (ossos). Você começa com 200.",
         "- O Pote de Ração gera petiscos. Clique nos ossos para coletá-los.",
         "- A pá (tecla S) remove um cachorro. O botão direito cancela.",
+        "- A luva (tecla L) muda um cachorro de lugar: só 2 vezes por fase.",
+        "- O botão 2x (tecla V) acelera o jogo.",
         "- Sobreviva às 4 hordas de cada fase. Na 5ª fase, enfrente o chefão!",
         "- Se um gato chegar à casa, você perde a fase.",
         "",
@@ -275,7 +277,7 @@ static void desenhar_instrucoes(const Jogo *jogo)
     ui_desenhar_painel((Rectangle){ 50, 30, 540, 264 });
     ui_texto_centro("Como Jogar", LARGURA_VIRTUAL / 2, 44, FONTE_MEDIA, COR_INFECTADO);
     for (int i = 0; i < (int)(sizeof(linhas) / sizeof(linhas[0])); i++) {
-        ui_texto(linhas[i], 70, 84 + i * 18, FONTE_PEQUENA, COR_TEXTO);
+        ui_texto(linhas[i], 70, 76 + i * 17, FONTE_PEQUENA, COR_TEXTO);
     }
     ui_desenhar_botao(&botaoVoltar, jogo->mouse);
 }
