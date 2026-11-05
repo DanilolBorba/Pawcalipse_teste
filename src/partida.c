@@ -456,11 +456,31 @@ void partida_atualizar(Partida *partida, Vector2 mouse, float dt)
         projetil_atualizar_lista(&partida->projeteis, partida->gatos, LARGURA_VIRTUAL, passo);
         soltar_petisco_do_ceu(partida, passo);
     }
-    if (gato_atualizar_lista(&partida->gatos, &partida->mapa, passo)) partida->resultado = PARTIDA_DERROTA;
+    if (gato_atualizar_lista(&partida->gatos, &partida->mapa, passo, partida->gatosDerrotados)) partida->resultado = PARTIDA_DERROTA;
     else if (fase_vencida(partida))                                   partida->resultado = PARTIDA_VITORIA;
 
     petisco_atualizar_lista(&partida->petiscos, passo);
     tratar_entrada(partida, mouse);
+}
+
+/* partida_pontuacao: soma os gatos derrotados de cada tipo e os pontos que
+ * cada tipo vale (tabela dos gatos). Na vitória (fora do tutorial), soma
+ * também BONUS_POR_FASE vezes o número da fase (mais BONUS_REI na fase do
+ * chefão) e o bônus de tempo: BONUS_TEMPO menos 1 ponto por segundo jogado,
+ * sem ficar negativo. Retorna as partes e o total. */
+Pontuacao partida_pontuacao(const Partida *partida)
+{
+    Pontuacao p = { 0 };
+    for (int t = 0; t < TOTAL_TIPOS_GATO; t++) {
+        p.gatos += partida->gatosDerrotados[t];
+        p.pontosGatos += partida->gatosDerrotados[t] * gato_info((TipoGato)t)->pontos;
+    }
+    if (partida->resultado == PARTIDA_VITORIA && !partida_eh_tutorial(partida)) {
+        p.vitoria = BONUS_POR_FASE * partida->fase + ((partida->chefao != NULL) ? BONUS_REI : 0);
+        p.tempo = (partida->tempoJogado < BONUS_TEMPO) ? BONUS_TEMPO - (int)partida->tempoJogado : 0;
+    }
+    p.total = p.pontosGatos + p.vitoria + p.tempo;
+    return p;
 }
 
 /* desenhar_carta: desenha a carta i: fundo, forma do cachorro, custo (em

@@ -1,5 +1,5 @@
 /* game.c - Máquina de estados das telas: menu, saves, fases, instruções,
- * partida e pausa. */
+ * ranking, partida (com a tela de resultado) e pausa. */
 
 #include "game.h"
 #include "cenario.h"
@@ -10,16 +10,18 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define RAIO_FASE 28
 
-enum { BOTAO_JOGAR, BOTAO_TUTORIAL, BOTAO_INSTRUCOES, BOTAO_SAIR, TOTAL_BOTOES_MENU };
+enum { BOTAO_JOGAR, BOTAO_TUTORIAL, BOTAO_INSTRUCOES, BOTAO_RANKING, BOTAO_SAIR, TOTAL_BOTOES_MENU };
 
 static const Botao botoesMenu[TOTAL_BOTOES_MENU] = {
     { { 240, 136, 160, 30 }, "Jogar"      },
     { { 240, 172, 160, 30 }, "Tutorial"   },
     { { 240, 208, 160, 30 }, "Instruções" },
-    { { 240, 244, 160, 30 }, "Sair"       },
+    { { 240, 244, 160, 30 }, "Ranking"    },
+    { { 240, 280, 160, 30 }, "Sair"       },
 };
 static const Botao botaoVoltar = { { 240, 312, 160, 30 }, "Voltar" };
 static const Botao botaoContinuar = { { 220, 160, 200, 30 }, "Continuar" };
@@ -79,9 +81,20 @@ static void atualizar_deck(Jogo *jogo)
     else if (acao == DECK_VOLTAR) jogo->estado = ESTADO_FASES;
 }
 
+/* lugar_no_ranking: lugar (0 a 9) que a partida terminada ocupa no Top 10,
+ * ou -1 se ela não entra (só as vitórias nas fases entram, o tutorial não). */
+static int lugar_no_ranking(const Jogo *jogo)
+{
+    const Partida *partida = jogo->partida;
+    if (partida->resultado != PARTIDA_VITORIA || partida_eh_tutorial(partida)) return -1;
+    return ranking_posicao(&jogo->ranking, partida_pontuacao(partida).total);
+}
+
 /* encerrar_partida: soma o tempo jogado ao save atual e, se a partida foi
- * vencida, marca a fase como concluída e libera a próxima; grava o arquivo,
- * destrói a partida e volta para o mapa de fases (ou para o menu, se era o
+ * vencida, marca a fase como concluída, libera a próxima e guarda os pontos
+ * se forem o recorde da fase; grava o arquivo. Se a vitória entrar no Top
+ * 10, põe no ranking com o nome digitado e grava o ranking. Por fim, destrói
+ * a partida e volta para o mapa de fases (ou para o menu, se era o
  * tutorial). */
 static void encerrar_partida(Jogo *jogo)
 {
@@ -89,14 +102,20 @@ static void encerrar_partida(Jogo *jogo)
     if (partida == NULL) return;
 
     bool tutorial = partida_eh_tutorial(partida);
+    Pontuacao pontos = partida_pontuacao(partida);
     if (!tutorial && jogo->saveAtual >= 0) {
         Save *save = &jogo->saves[jogo->saveAtual];
         save->tempoJogado += partida->tempoJogado;
         if (partida->resultado == PARTIDA_VITORIA) {
             save->faseConcluida[partida->fase - 1] = true;
             if (partida->fase < TOTAL_FASES && save->faseLiberada <= partida->fase) save->faseLiberada = partida->fase + 1;
+            save_registrar_pontos(save, partida->fase, pontos.total);
         }
         gravar_saves(jogo);
+    }
+    if (lugar_no_ranking(jogo) >= 0) {
+        ranking_inserir(&jogo->ranking, jogo->nome, partida->fase, pontos.total, partida->tempoJogado);
+        if (!ranking_gravar(&jogo->ranking)) fprintf(stderr, "Aviso: não foi possível gravar %s\n", ARQUIVO_RECORDES);
     }
 
     partida_destruir(partida);
@@ -110,6 +129,7 @@ static void atualizar_menu(Jogo *jogo)
     if (ui_botao_clicado(&botoesMenu[BOTAO_JOGAR], jogo->mouse))      jogo->estado = ESTADO_SAVES;
     if (ui_botao_clicado(&botoesMenu[BOTAO_TUTORIAL], jogo->mouse))   iniciar_partida(jogo, FASE_TUTORIAL);
     if (ui_botao_clicado(&botoesMenu[BOTAO_INSTRUCOES], jogo->mouse)) jogo->estado = ESTADO_INSTRUCOES;
+    if (ui_botao_clicado(&botoesMenu[BOTAO_RANKING], jogo->mouse))    jogo->estado = ESTADO_RANKING;
     if (ui_botao_clicado(&botoesMenu[BOTAO_SAIR], jogo->mouse))       jogo->estado = ESTADO_SAIR;
 }
 
@@ -275,6 +295,17 @@ static void desenhar_fases(const Jogo *jogo)
     ui_desenhar_botao(&botaoVoltar, jogo->mouse);
 }
 
+/* desenhar_ranking: painel com o Top 10 (lugar, nome, fase, pontos e
+ * tempo de cada recorde) e o botão Voltar. */
+static void desenhar_ranking(const Jogo *jogo)
+{
+    cenario_desenhar_menu(jogo->tempo);
+    ui_desenhar_painel((Rectangle){ 100, 30, 440, 264 });
+    ui_texto_centro("Top 10 - Melhores Vitórias", LARGURA_VIRTUAL / 2, 44, FONTE_MEDIA, COR_INFECTADO);
+    ranking_desenhar(&jogo->ranking, (Rectangle){ 145, 76, 350, 210 });
+    ui_desenhar_botao(&botaoVoltar, jogo->mouse);
+}
+
 /* desenhar_instrucoes: painel com o texto de como jogar e o botão Voltar. */
 static void desenhar_instrucoes(const Jogo *jogo)
 {
@@ -318,24 +349,40 @@ static Botao botao_fim_partida(const Partida *partida)
 {
     const char *texto = tem_proxima_fase(partida) ? "Próxima Fase" : "Tentar de Novo";
     if (partida->resultado == PARTIDA_VITORIA && !tem_proxima_fase(partida)) texto = "Jogar de Novo";
-    return (Botao){ { 220, 192, 200, 30 }, texto };
+    return (Botao){ { 220, 250, 200, 30 }, texto };
 }
 
 /* botao_voltar_fim: o 2º botão da tela de fim de partida, que volta ao mapa
  * de fases (ou ao menu, se era o tutorial). */
 static Botao botao_voltar_fim(const Partida *partida)
 {
-    return (Botao){ { 220, 230, 200, 30 }, partida_eh_tutorial(partida) ? "Voltar ao Menu" : "Voltar ao Mapa" };
+    return (Botao){ { 220, 288, 200, 30 }, partida_eh_tutorial(partida) ? "Voltar ao Menu" : "Voltar ao Mapa" };
 }
 
-/* atualizar_fim_partida: na tela de vitória/derrota, o 1º botão encerra a
- * partida (salvando o resultado) e abre a próxima fase (ou a mesma de novo),
+/* digitar_nome: lê as letras digitadas (caracteres comuns, até
+ * TAMANHO_NOME) e o Backspace, que apaga a última. */
+static void digitar_nome(Jogo *jogo)
+{
+    int tamanho = (int)strlen(jogo->nome);
+    for (int c = GetCharPressed(); c != 0; c = GetCharPressed()) {
+        if (c < 32 || c > 126 || tamanho >= TAMANHO_NOME) continue;
+        jogo->nome[tamanho++] = (char)c;
+        jogo->nome[tamanho] = '\0';
+    }
+    if (IsKeyPressed(KEY_BACKSPACE) && tamanho > 0) jogo->nome[tamanho - 1] = '\0';
+}
+
+/* atualizar_fim_partida: na tela de vitória/derrota, se a vitória entrar no
+ * Top 10, o jogador digita o nome. O 1º botão encerra a partida (salvando o
+ * resultado e o recorde) e abre a próxima fase (ou a mesma de novo),
  * passando pela escolha do deck; o 2º só encerra. */
 static void atualizar_fim_partida(Jogo *jogo)
 {
     Botao principal = botao_fim_partida(jogo->partida);
     Botao voltar = botao_voltar_fim(jogo->partida);
     int fase = tem_proxima_fase(jogo->partida) ? jogo->partida->fase + 1 : jogo->partida->fase;
+
+    if (lugar_no_ranking(jogo) >= 0) digitar_nome(jogo);
 
     if (ui_botao_clicado(&principal, jogo->mouse)) {
         encerrar_partida(jogo);
@@ -355,9 +402,42 @@ static void atualizar_jogando(Jogo *jogo)
     else partida_atualizar(jogo->partida, jogo->mouse, fminf(GetFrameTime(), 0.1f));
 }
 
+/* desenhar_linha_pontos: uma linha da conta de pontos: o texto à esquerda
+ * e o valor ("+N") alinhado à direita. */
+static void desenhar_linha_pontos(const char *texto, int valor, int y)
+{
+    const char *numero = TextFormat("+%d", valor);
+    ui_texto(texto, 200, y, FONTE_PEQUENA, COR_TEXTO);
+    ui_texto(numero, 440 - MeasureText(numero, FONTE_PEQUENA), y, FONTE_PEQUENA, COR_TEXTO);
+}
+
+/* desenhar_resultado: abaixo do título, a conta de pontos da partida: gatos
+ * derrotados, bônus de vitória e de tempo e o total. Se a vitória entrar no
+ * Top 10, mostra o lugar e a caixa com o nome sendo digitado (com um cursor
+ * piscando). */
+static void desenhar_resultado(const Jogo *jogo)
+{
+    const Partida *partida = jogo->partida;
+    Pontuacao p = partida_pontuacao(partida);
+    int lugar = lugar_no_ranking(jogo);
+
+    desenhar_linha_pontos(TextFormat("Gatos derrotados: %d", p.gatos), p.pontosGatos, 112);
+    desenhar_linha_pontos("Bônus de vitória", p.vitoria, 128);
+    desenhar_linha_pontos("Bônus de tempo", p.tempo, 144);
+    ui_texto_centro(TextFormat("TOTAL: %d pontos", p.total), LARGURA_VIRTUAL / 2, 164, FONTE_MEDIA, COR_PETISCO);
+    if (lugar < 0) return;
+
+    Rectangle caixa = { 240, 212, 160, 20 };
+    bool cursor = fmodf(jogo->tempo, 1.0f) < 0.5f;
+    ui_texto_centro(TextFormat("Novo recorde: %dº lugar no Top 10! Digite seu nome:", lugar + 1), LARGURA_VIRTUAL / 2, 194, FONTE_PEQUENA, COR_INFECTADO);
+    DrawRectangleRec(caixa, Fade(BLACK, 0.8f));
+    DrawRectangleLinesEx(caixa, 1, COR_INFECTADO);
+    ui_texto_centro(TextFormat("%s%s", jogo->nome, cursor ? "_" : " "), LARGURA_VIRTUAL / 2, caixa.y + 5, FONTE_PEQUENA, COR_TEXTO);
+}
+
 /* desenhar_jogando: desenha a partida; com o resultado decidido, escurece a
  * tela e mostra por cima o título (vitória em verde, derrota em vermelho),
- * o tempo da partida e os dois botões. */
+ * o tempo da partida, a conta de pontos (fora do tutorial) e os dois botões. */
 static void desenhar_jogando(const Jogo *jogo)
 {
     const Partida *partida = jogo->partida;
@@ -371,8 +451,9 @@ static void desenhar_jogando(const Jogo *jogo)
     Botao voltar = botao_voltar_fim(partida);
 
     DrawRectangle(0, 0, LARGURA_VIRTUAL, ALTURA_VIRTUAL, Fade(BLACK, 0.6f));
-    ui_texto_centro(titulo, LARGURA_VIRTUAL / 2, 100, FONTE_GRANDE, venceu ? COR_INFECTADO : COR_ALERTA);
-    ui_texto_centro(TextFormat("Tempo: %s", texto_tempo(partida->tempoJogado)), LARGURA_VIRTUAL / 2, 150, FONTE_MEDIA, COR_TEXTO);
+    ui_texto_centro(titulo, LARGURA_VIRTUAL / 2, 36, FONTE_GRANDE, venceu ? COR_INFECTADO : COR_ALERTA);
+    ui_texto_centro(TextFormat("Tempo: %s", texto_tempo(partida->tempoJogado)), LARGURA_VIRTUAL / 2, 84, FONTE_MEDIA, COR_TEXTO);
+    if (!partida_eh_tutorial(partida)) desenhar_resultado(jogo);
     ui_desenhar_botao(&principal, jogo->mouse);
     ui_desenhar_botao(&voltar, jogo->mouse);
 }
@@ -403,11 +484,13 @@ Jogo *jogo_criar(void)
     jogo->saveAtual = -1;
     jogo->saveParaApagar = -1;
     jogo->deck = (EscolhaDeck){ 0 };
+    jogo->nome[0] = '\0';
     jogo->partida = NULL;
     jogo->tela = LoadRenderTexture(LARGURA_VIRTUAL, ALTURA_VIRTUAL);
     SetTextureFilter(jogo->tela.texture, TEXTURE_FILTER_POINT);
     sprite_carregar_todos();
     save_carregar_todos(jogo->saves);
+    ranking_carregar(&jogo->ranking);
     audio_iniciar(&jogo->audio);
     return jogo;
 }
@@ -433,6 +516,7 @@ void jogo_atualizar(Jogo *jogo)
         case ESTADO_DECK:    atualizar_deck(jogo);     break;
         case ESTADO_JOGANDO: atualizar_jogando(jogo);  break;
         case ESTADO_INSTRUCOES:
+        case ESTADO_RANKING:
             if (ui_botao_clicado(&botaoVoltar, jogo->mouse) || IsKeyPressed(KEY_ESCAPE)) jogo->estado = ESTADO_MENU;
             break;
         case ESTADO_PAUSA:
@@ -457,6 +541,7 @@ void jogo_desenhar(const Jogo *jogo)
         case ESTADO_FASES:      desenhar_fases(jogo);                         break;
         case ESTADO_DECK:       deck_desenhar(&jogo->deck, jogo->mouse, jogo->tempo); break;
         case ESTADO_INSTRUCOES: desenhar_instrucoes(jogo);                    break;
+        case ESTADO_RANKING:    desenhar_ranking(jogo);                       break;
         case ESTADO_JOGANDO:    desenhar_jogando(jogo);                       break;
         case ESTADO_PAUSA:      desenhar_pausa(jogo);                         break;
         case ESTADO_SAIR:                                                     break;
