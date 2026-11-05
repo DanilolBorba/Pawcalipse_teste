@@ -13,7 +13,7 @@
 #define RAIO_GATO           22     // metade da largura do corpo (área onde ele é atingido)
 #define VIDA_SEM_ACESSORIO  200    // abaixo disso o gato perde a caixa ou a lata
 #define INTERVALO_MORDIDA   1.0f   // segundos entre duas mordidas
-#define DURACAO_LENTIDAO    4.0f   // segundos lento depois de uma bolinha gelada
+#define DURACAO_LENTIDAO    4.0f   // segundos lento depois de uma baba gelada
 
 typedef enum TipoGato {
     GATO_PADRAO,       // o mais fraco

@@ -16,6 +16,16 @@ typedef enum IdSprite {
     SPRITE_GATO_CAIXA,
     SPRITE_GATO_LATA,
     SPRITE_GERADOR,
+    SPRITE_BEAGLE,          // as 10 raças, paradas abanando o rabo
+    SPRITE_BULLDOG,
+    SPRITE_DALMATA,
+    SPRITE_HUSKY,
+    SPRITE_PASTOR_ALEMAO,
+    SPRITE_WESTIE,
+    SPRITE_SAO_BERNARDO,
+    SPRITE_DACHSHUND,
+    SPRITE_ROTTWEILER,
+    SPRITE_SHIBA,
     TOTAL_SPRITES
 } IdSprite;
 

@@ -14,6 +14,7 @@
 #define INTERVALO_CEU    8.0f   // segundos mínimos entre petiscos do céu
 #define DURACAO_AVISO    1.6f
 #define DURACAO_EFEITO   0.35f
+#define DURACAO_LATIDO   0.6f
 #define PETISCOS_TESTE   100    // ganhos com a tecla ']' (atalho de teste)
 
 #define INFO_X           480    // começo da área de fase, tempo e hordas na barra superior
@@ -75,7 +76,7 @@ static void montar_deck(Partida *partida, const TipoCachorro deck[], int total)
 }
 
 /* partida_criar: aloca a partida com malloc, zera tudo e prepara o campo
- * vazio, as listas de petiscos, gatos e bolinhas vazias, o saldo inicial,
+ * vazio, as listas de petiscos, gatos e babas vazias, o saldo inicial,
  * a luva com todos os usos, a esteira vazia e as cartas: no tutorial, um
  * deck fixo; na fase do chefão, nenhuma (os cachorros vêm pela esteira) e o
  * Rei, alocado com malloc; nas outras fases, o deck escolhido pelo jogador e
@@ -116,7 +117,7 @@ Partida *partida_criar(int fase, const TipoCachorro deck[TAMANHO_DECK])
 }
 
 /* partida_destruir: libera os cachorros do campo, as listas de petiscos,
- * gatos e bolinhas, o chefão (se houver) e a própria partida. */
+ * gatos e babas, o chefão (se houver) e a própria partida. */
 void partida_destruir(Partida *partida)
 {
     if (partida == NULL) return;
@@ -147,11 +148,13 @@ static void soltar_petisco_do_ceu(Partida *partida, float dt)
     partida->timerPetiscoCeu = INTERVALO_CEU + rand() % 5;
 }
 
-/* agir_cachorro: conta o tempo até a próxima ação do cachorro; quando ele
+/* agir_cachorro: avança a animação do cachorro e conta o tempo até a
+ * próxima ação dele; quando ele
  * chega a zero, usa a habilidade da raça e, se ela agiu, recomeça a contar
  * a cadência. Se não agiu (sem alvo), tenta de novo no próximo frame. */
 static void agir_cachorro(Partida *partida, Cachorro *cachorro, float dt)
 {
+    cachorro->animacao += dt;
     cachorro->timer -= dt;
     if (cachorro->timer > 0.0f) return;
     if (habilidade_usar(partida, cachorro)) cachorro->timer = cachorro_info(cachorro->tipo)->cadencia;
@@ -170,26 +173,58 @@ static void agir_cachorros(Partida *partida, float dt)
     }
 }
 
-/* partida_adicionar_efeito: ocupa uma vaga livre do vetor de efeitos com um
- * círculo (explosão ou cura). Se todas estiverem ocupadas, não mostra. */
-void partida_adicionar_efeito(Partida *partida, Vector2 centro, float raio, Color cor)
+/* ocupar_vaga_efeito: guarda o efeito na 1ª vaga livre do vetor de efeitos.
+ * Se todas estiverem ocupadas, ele não aparece. */
+static void ocupar_vaga_efeito(Partida *partida, Efeito efeito)
 {
     for (int i = 0; i < MAX_EFEITOS; i++) {
         if (partida->efeitos[i].tempo > 0.0f) continue;
-        partida->efeitos[i] = (Efeito){ centro, raio, DURACAO_EFEITO, cor };
+        partida->efeitos[i] = efeito;
         return;
     }
 }
 
-/* desenhar_efeitos: cada efeito ativo é um círculo que cresce até o raio
- * dele enquanto vai ficando transparente. */
+/* partida_adicionar_efeito: mostra um círculo (explosão, cura...) que cresce
+ * até 'raio' e some. */
+void partida_adicionar_efeito(Partida *partida, Vector2 centro, float raio, Color cor)
+{
+    ocupar_vaga_efeito(partida, (Efeito){ centro, raio, DURACAO_EFEITO, DURACAO_EFEITO, cor, NULL });
+}
+
+/* partida_adicionar_latido: mostra o latido do cachorro da célula 'centro':
+ * ondas que se abrem até 'alcance' e o texto, na cor pedida. */
+void partida_adicionar_latido(Partida *partida, Vector2 centro, const char *texto, float alcance, Color cor)
+{
+    ocupar_vaga_efeito(partida, (Efeito){ centro, alcance, DURACAO_LATIDO, DURACAO_LATIDO, cor, texto });
+}
+
+/* desenhar_latido: três ondas (arcos) saindo da boca do cachorro para a
+ * direita, abrindo até o alcance, e o texto do latido subindo acima da
+ * cabeça. 'resta' vai de 1 (começo) a 0 (fim): tudo some aos poucos. */
+static void desenhar_latido(const Efeito *e, float resta)
+{
+    Vector2 boca = { e->centro.x + 20, e->centro.y + 4 };
+    float abertura = 1.0f - resta;
+    for (int i = 1; i <= 3; i++) {
+        float r = 4 + e->raio * abertura * i / 3;
+        DrawRing(boca, r, r + 2, -40, 40, 8, Fade(e->cor, resta));
+    }
+    ui_texto(e->latido, e->centro.x + 6, e->centro.y - 34 - abertura * 8, FONTE_PEQUENA, Fade(e->cor, resta));
+}
+
+/* desenhar_efeitos: cada efeito ativo é um latido ou um círculo que cresce
+ * até o raio dele enquanto vai ficando transparente. */
 static void desenhar_efeitos(const Partida *partida)
 {
     for (int i = 0; i < MAX_EFEITOS; i++) {
         const Efeito *e = &partida->efeitos[i];
         if (e->tempo <= 0.0f) continue;
 
-        float resta = e->tempo / DURACAO_EFEITO;
+        float resta = e->tempo / e->duracao;
+        if (e->latido != NULL) {
+            desenhar_latido(e, resta);
+            continue;
+        }
         float raio = e->raio * (1.0f - resta * 0.5f);
         DrawCircleV(e->centro, raio, Fade(e->cor, 0.45f * resta));
         DrawCircleLinesV(e->centro, raio, Fade(e->cor, resta));
@@ -425,9 +460,9 @@ static bool fase_vencida(const Partida *partida)
 
 /* partida_atualizar: avança o tempo da partida, o aviso, os efeitos e a
  * recarga das cartas; faz os cachorros agirem; na fase do chefão, faz a
- * esteira andar e o Rei agir (e leva até ele o dano das bolinhas que chegam
+ * esteira andar e o Rei agir (e leva até ele o dano das babas que chegam
  * à sua frente); nas outras, manda os gatos das hordas (fora do tutorial) e
- * solta petiscos do céu. Move as bolinhas, os gatos e os petiscos e trata a
+ * solta petiscos do céu. Move as babas, os gatos e os petiscos e trata a
  * entrada do jogador. Se um gato invadir a casa, é derrota; se a fase for
  * vencida, vitória. Com o resultado decidido, a partida congela.
  * Com o 2x ligado, o jogo avança o dobro ('passo'), mas o relógio da
@@ -664,7 +699,7 @@ static void desenhar_anuncio_horda(const Partida *partida)
 
 /* partida_desenhar: desenha, de trás para a frente, o céu e os prédios atrás
  * da barra, o campo com os cachorros, o Rei (na fase do chefão), os gatos,
- * as bolinhas, as explosões e curas, a prévia sob o mouse, a barra superior,
+ * as babas, as explosões, os latidos e curas, a prévia sob o mouse, a barra superior,
  * a esteira (só na fase do chefão), a faixa de mensagens, a dica da carta
  * sob o mouse, o anúncio da horda e os petiscos (por cima de tudo). */
 void partida_desenhar(const Partida *partida, Vector2 mouse)

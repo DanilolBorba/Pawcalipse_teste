@@ -1,3 +1,8 @@
 # PawPocalypse - Top 10
 # pontos fase tempo(segundos) nome
+7109 5 166.41 \aaaamm\
+3000 4 0.66 \
+2500 3 0.42 \
+2017 2 58.22 \
+1494 1 6.23 \
 1476 1 34.85 am

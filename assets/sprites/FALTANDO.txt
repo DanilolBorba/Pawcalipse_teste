@@ -1,0 +1,49 @@
+PAWPOCALYPSE - SPRITES QUE AINDA FALTAM
+
+Hoje o jogo improvisa estes desenhos (formas, cores trocadas ou sprite de
+outro personagem). Quando um PNG novo chegar, basta colocá-lo na pasta
+indicada e avisar: o código já sabe trocar o improviso pelo sprite.
+
+PADRÃO DE TODOS (o mesmo dos cachorros e gatos que já existem)
+  - PNG com fundo transparente, pixel-art sem suavização.
+  - Spritesheet: quadros de 64x64 lado a lado numa única linha, sem espaço.
+  - Os pés tocam o chão na linha y = 58 do quadro.
+  - Gatos olham para a ESQUERDA; cachorros, para a DIREITA.
+  - Junto: o .json do Aseprite (ou um LEIAME) com a duração de cada quadro.
+  - Nome da pasta sem espaço e sem acento (ex.: gato_siames/).
+
+1. GATOS ESPECIAIS - hoje são o gato padrão pintado de outra cor
+   Animação "andar", 8 quadros, mesmos tempos do gato padrão
+   (160 140 140 200 180 140 140 160 ms), para as patas não deslizarem.
+   gato_siames/       Siamês: rápido. Bege com rosto, orelhas e patas escuras.
+   gato_persa/        Persa: pelo muito fofo (é imune ao gelo). Branco-acinzentado.
+   gato_telhado/      Gato de Telhado: pula o 1º cachorro. Cinza, magro, ágil.
+   gato_maine_coon/   Maine Coon: o tanque. Grande e peludo, marrom-alaranjado.
+                      (O jogo já o desenha 1,5x maior: no quadro, use o
+                      mesmo tamanho dos outros gatos.)
+
+2. REI DOS GATOS ZUMBIS (chefão da fase 5) - hoje é o gato padrão
+   ampliado 2,5x, arroxeado, com uma coroa desenhada pelo jogo.
+   rei_dos_gatos/     Animação "parado" (respirando, rabo mexendo), 8 quadros.
+                      Fica parado no fim do campo, olhando para a ESQUERDA.
+                      O jogo o amplia 2,5x: desenhe no quadro de 64x64,
+                      já com a coroa (aí o jogo deixa de desenhar a dele).
+
+3. BOLA DE PELO (ataque do Rei) - hoje é um círculo com três tufos
+   bola_de_pelo/      16x16 por quadro (exceção ao padrão de 64x64),
+                      4 quadros rolando para a ESQUERDA, 80 ms cada.
+
+4. ÍCONES DA BARRA SUPERIOR - hoje são só texto e triângulos
+   icones/pa.png      Pá, 32x32, imagem única.
+   icones/luva.png    Luva, 32x32, imagem única.
+   icones/2x.png      Botão de acelerar (duas setas), 32x32, imagem única.
+
+5. OPCIONAIS (deixam o jogo mais vivo, mas não são obrigatórios)
+   - Cachorros "atacando": 4 quadros cada (cuspindo baba os atiradores;
+     latindo o Pastor Alemão e o Shiba Inu; pulando da toca o Westie;
+     explodindo o Rottweiler).
+   - Westie cavando a toca: hoje ele só fica escurecido enquanto cava.
+
+JÁ PRONTOS (não precisa refazer)
+  10 cachorros, Pote de Ração (gerador_petiscos), gato padrão, gato da
+  caixa e gato da lata. As babas e os latidos são desenhados pelo código.

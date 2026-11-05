@@ -11,6 +11,8 @@ typedef struct InfoSprite {
     Vector2 origem;                   // ponto do quadro que fica sobre a posição (pés ou base)
 } InfoSprite;
 
+#define PARADO_8_QUADROS  { 120, 120, 120, 120, 120, 120, 120, 120 }   // os cachorros parados (LEIAME_cachorros.txt)
+
 static const InfoSprite infos[TOTAL_SPRITES] = {
     [SPRITE_GATO_PADRAO] = { "assets/sprites/gato_zumbi_padrao/gato_zumbi_padrao_andar_spritesheet.png", 8,
                              { 160, 140, 140, 200, 180, 140, 140, 160 }, { 32, 58 } },
@@ -20,6 +22,16 @@ static const InfoSprite infos[TOTAL_SPRITES] = {
                              { 160, 140, 140, 200, 180, 140, 140, 160 }, { 32, 56 } },
     [SPRITE_GERADOR]     = { "assets/sprites/gerador_petiscos/gerador_petiscos_spritesheet.png", 11,
                              { 300, 140, 140, 120, 120, 100, 100, 80, 160, 100, 120 }, { 23, 62 } },
+    [SPRITE_BEAGLE]         = { "assets/sprites/beagle/beagle_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
+    [SPRITE_BULLDOG]        = { "assets/sprites/bulldog/bulldog_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
+    [SPRITE_DALMATA]        = { "assets/sprites/dalmata/dalmata_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
+    [SPRITE_HUSKY]          = { "assets/sprites/husky/husky_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
+    [SPRITE_PASTOR_ALEMAO]  = { "assets/sprites/pastor_alemao/pastor_alemao_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
+    [SPRITE_WESTIE]         = { "assets/sprites/westie/westie_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
+    [SPRITE_SAO_BERNARDO]   = { "assets/sprites/sao_bernardo/sao_bernardo_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
+    [SPRITE_DACHSHUND]      = { "assets/sprites/dachshund/dachshund_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
+    [SPRITE_ROTTWEILER]     = { "assets/sprites/rottweiler/rottweiler_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
+    [SPRITE_SHIBA]          = { "assets/sprites/shiba_inu/shiba_inu_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
 };
 
 static Texture2D texturas[TOTAL_SPRITES];   // id 0 = não carregada

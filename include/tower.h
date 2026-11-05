@@ -1,10 +1,11 @@
 #ifndef TOWER_H
 #define TOWER_H
 
-/* tower.h - Os defensores: as raças de cachorro e o Pote de Ração.
- * Até os sprites ficarem prontos, cada raça é uma forma geométrica. */
+/* tower.h - Os defensores: as raças de cachorro e o Pote de Ração. Cada
+ * um é desenhado com o seu sprite; sem o PNG, vira uma forma geométrica. */
 
 #include "raylib.h"
+#include "sprite.h"
 
 #define RAIO_CACHORRO  22   // tamanho do cachorro desenhado no campo
 
@@ -32,7 +33,8 @@ typedef struct InfoCachorro {   // dados fixos de cada raça (provisórios)
     int   dano;            // dano de cada ataque (no São Bernardo, a cura)
     float cadencia;        // segundos entre duas ações
     float inicio;          // segundos até a 1ª ação (o pote produzir, a mina armar...)
-    int   lados;           // forma: 0 = círculo, 3 = triângulo, 4 = quadrado...
+    IdSprite sprite;       // animação parada (o pote: o gerador de petiscos)
+    int   lados;           // forma reserva, sem o PNG: 0 = círculo, 3 = triângulo, 4 = quadrado...
     float giro;            // rotação da forma, em graus
     Color cor;
 } InfoCachorro;
@@ -42,12 +44,13 @@ typedef struct Cachorro {   // um cachorro (ou pote) no campo, criado com malloc
     int   linha, coluna;   // posição na matriz do mapa
     int   vida;
     float timer;           // segundos até a próxima ação (petisco do pote, ataque...)
+    float animacao;        // segundos da animação parada já tocados
 } Cachorro;
 
 const InfoCachorro *cachorro_info(TipoCachorro tipo);                    // dados fixos de um tipo
 Cachorro *cachorro_criar(TipoCachorro tipo, int linha, int coluna);      // aloca um cachorro (NULL se faltar memória)
 void cachorro_destruir(Cachorro *cachorro);                              // libera um cachorro
-int  cachorro_quadro(const Cachorro *cachorro);                          // quadro da animação no campo (só o pote anima)
+int  cachorro_quadro(const Cachorro *cachorro);                          // quadro da animação no campo
 void cachorro_desenhar(TipoCachorro tipo, Vector2 centro, float raio, int quadro, Color tinta);  // desenha o tipo (sprite ou forma)
 
 #endif
