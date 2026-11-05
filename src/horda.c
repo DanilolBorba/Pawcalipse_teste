@@ -5,7 +5,7 @@
 
 #include <stdlib.h>
 
-#define FASES_COM_HORDAS    4       // a fase 5 usa a tabela da 4 até o chefão existir (Etapa 7)
+#define FASES_COM_HORDAS    4       // a fase 5 é a do chefão, que tem as hordas dele (chefao.c)
 #define PREPARACAO          20.0f   // segundos antes da 1ª horda
 #define PAUSA_ENTRE_HORDAS  8.0f
 #define INTERVALO_INICIAL   6.0f    // segundos entre gatos na 1ª horda (1 a menos a cada horda)
@@ -31,17 +31,11 @@ static const int tabela[FASES_COM_HORDAS][HORDAS_POR_FASE][TOTAL_TIPOS_GATO] = {
                    {    12,    5,   3,    3,     3,    3,     2 } },
 };
 
-/* indice_da_fase: posição da fase na tabela (a 5 usa a da 4, por enquanto). */
-static int indice_da_fase(int fase)
-{
-    return ((fase > FASES_COM_HORDAS) ? FASES_COM_HORDAS : fase) - 1;
-}
-
 /* carregar_horda: copia da tabela quantos gatos de cada tipo a horda atual
  * vai mandar e zera o timer, para o 1º gato sair assim que a pausa acabar. */
 static void carregar_horda(Hordas *hordas)
 {
-    for (int t = 0; t < TOTAL_TIPOS_GATO; t++) hordas->faltam[t] = tabela[indice_da_fase(hordas->fase)][hordas->atual][t];
+    for (int t = 0; t < TOTAL_TIPOS_GATO; t++) hordas->faltam[t] = tabela[hordas->fase - 1][hordas->atual][t];
     hordas->timerGato = 0.0f;
 }
 
@@ -53,7 +47,7 @@ void horda_iniciar(Hordas *hordas, int fase)
     hordas->fase = fase;
     hordas->timerPausa = PREPARACAO;
     for (int h = 0; h < HORDAS_POR_FASE; h++) {
-        for (int t = 0; t < TOTAL_TIPOS_GATO; t++) hordas->totalFase += tabela[indice_da_fase(fase)][h][t];
+        for (int t = 0; t < TOTAL_TIPOS_GATO; t++) hordas->totalFase += tabela[fase - 1][h][t];
     }
     carregar_horda(hordas);
 }

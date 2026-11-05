@@ -10,7 +10,7 @@
 #define HORDAS_POR_FASE  4
 
 typedef struct Hordas {
-    int   fase;                       // 1 a 5 (a 5 usa a tabela da 4 até o chefão existir)
+    int   fase;                       // 1 a 4 (a 5, do chefão, não usa esta tabela)
     int   atual;                      // horda em andamento (0 a 3); HORDAS_POR_FASE = todas vencidas
     int   faltam[TOTAL_TIPOS_GATO];   // gatos de cada tipo que ainda vão sair nesta horda
     int   totalFase;                  // gatos da fase inteira

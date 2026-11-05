@@ -3,7 +3,7 @@
 
 /* projetil.h - Bolinhas de tênis atiradas pelos cachorros. Ficam numa LISTA
  * ENCADEADA: cada uma é criada com malloc no disparo e liberada com free
- * quando acerta um gato ou sai da tela. */
+ * quando acerta um gato ou chega ao fim do campo. */
 
 #include "raylib.h"
 #include "enemy.h"
@@ -20,7 +20,7 @@ typedef struct Projetil {
 } Projetil;
 
 bool projetil_adicionar(Projetil **lista, Vector2 posicao, int linha, int dano, bool gelada);  // nova bolinha no início da lista (false se faltar memória)
-void projetil_atualizar_lista(Projetil **lista, Gato *gatos, float dt);           // move, causa dano e remove as que acertaram ou saíram
+int  projetil_atualizar_lista(Projetil **lista, Gato *gatos, float fimX, float dt);   // move, causa dano e remove; retorna o dano das que passaram de fimX
 void projetil_desenhar_lista(const Projetil *lista);                              // desenha todas as bolinhas
 void projetil_liberar_lista(Projetil **lista);                                    // libera todos os nós e deixa a lista vazia
 

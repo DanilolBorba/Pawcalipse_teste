@@ -60,11 +60,11 @@ static void iniciar_partida(Jogo *jogo, int fase)
 }
 
 /* abrir_fase: as fases passam antes pela escolha do deck; o tutorial, que
- * tem deck fixo, começa direto. */
+ * tem deck fixo, e a fase do chefão, que usa a esteira, começam direto. */
 static void abrir_fase(Jogo *jogo, int fase)
 {
-    if (fase == FASE_TUTORIAL) {
-        iniciar_partida(jogo, FASE_TUTORIAL);
+    if (fase == FASE_TUTORIAL || fase == FASE_CHEFAO) {
+        iniciar_partida(jogo, fase);
         return;
     }
     deck_iniciar(&jogo->deck, fase);
@@ -288,7 +288,8 @@ static void desenhar_instrucoes(const Jogo *jogo)
         "- A pá (tecla S) remove um cachorro. O botão direito cancela.",
         "- A luva (tecla L) muda um cachorro de lugar: só 2 vezes por fase.",
         "- O botão 2x (tecla V) acelera o jogo.",
-        "- Sobreviva às 4 hordas de cada fase. Na 5ª fase, enfrente o chefão!",
+        "- Sobreviva às 4 hordas de cada fase. Na 5ª fase, enfrente o chefão:",
+        "  os cachorros chegam de graça pela esteira, à esquerda.",
         "- Se um gato chegar à casa, você perde a fase.",
         "",
         "ESC: pausar     M: música     F11: tela cheia",
@@ -365,6 +366,7 @@ static void desenhar_jogando(const Jogo *jogo)
 
     bool venceu = (partida->resultado == PARTIDA_VITORIA);
     const char *titulo = !venceu ? "A CASA FOI INVADIDA!" : (partida_eh_tutorial(partida) ? "TUTORIAL CONCLUÍDO!" : "FASE CONCLUÍDA!");
+    if (venceu && partida->chefao != NULL) titulo = "O REI FOI DERROTADO!";
     Botao principal = botao_fim_partida(partida);
     Botao voltar = botao_voltar_fim(partida);
 
