@@ -1,7 +1,6 @@
 /* projetil.c - Lista encadeada das bolinhas de tênis em voo. */
 
 #include "projetil.h"
-#include "config.h"
 
 #include <stdlib.h>
 
@@ -32,9 +31,12 @@ static void remover_no(Projetil **ligacao)
 
 /* projetil_atualizar_lista: move cada bolinha para a direita; se ela tocar
  * um gato da sua linha, causa o dano nele (e, se for gelada, o deixa lento).
- * Remove da lista as que acertaram e as que saíram da tela. */
-void projetil_atualizar_lista(Projetil **lista, Gato *gatos, float dt)
+ * Remove da lista as que acertaram e as que passaram de fimX (a borda da
+ * tela ou, na fase do chefão, a frente do Rei). Retorna a soma do dano das
+ * bolinhas que chegaram a fimX sem acertar nenhum gato. */
+int projetil_atualizar_lista(Projetil **lista, Gato *gatos, float fimX, float dt)
 {
+    int danoNoFim = 0;
     Projetil **ligacao = lista;
     while (*ligacao != NULL) {
         Projetil *p = *ligacao;
@@ -43,10 +45,12 @@ void projetil_atualizar_lista(Projetil **lista, Gato *gatos, float dt)
         Gato *alvo = gato_atingido(gatos, p->linha, p->posicao.x);
         if (alvo != NULL) gato_ferir(alvo, p->dano);
         if (alvo != NULL && p->gelada) gato_gelar(alvo);
+        if (alvo == NULL && p->posicao.x > fimX) danoNoFim += p->dano;
 
-        if (alvo != NULL || p->posicao.x > LARGURA_VIRTUAL) remover_no(ligacao);
-        else                                                ligacao = &p->proximo;
+        if (alvo != NULL || p->posicao.x > fimX) remover_no(ligacao);
+        else                                     ligacao = &p->proximo;
     }
+    return danoNoFim;
 }
 
 /* projetil_desenhar_lista: desenha cada bolinha de tênis (amarelo-esverdeada,

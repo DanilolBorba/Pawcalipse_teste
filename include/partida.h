@@ -5,7 +5,9 @@
  * quando a fase começa e liberada quando o jogador sai dela. */
 
 #include "raylib.h"
+#include "chefao.h"
 #include "enemy.h"
+#include "esteira.h"
 #include "horda.h"
 #include "map.h"
 #include "petisco.h"
@@ -17,12 +19,13 @@
 #define MAX_CARTAS         (TAMANHO_DECK + 1)   // o Pote de Ração vem sempre junto
 #define PETISCOS_INICIAIS  200
 #define FASE_TUTORIAL      0
+#define FASE_CHEFAO        5     // a fase do Rei dos Gatos, com a esteira
 #define MAX_EFEITOS        8     // explosões/curas na tela ao mesmo tempo
 #define USOS_LUVA          2     // vezes que a luva pode ser usada por partida
 
 typedef enum ResultadoPartida {
     PARTIDA_EM_ANDAMENTO,
-    PARTIDA_VITORIA,       // as 4 hordas (ou o gato do tutorial) foram vencidas
+    PARTIDA_VITORIA,       // as 4 hordas, o Rei ou o gato do tutorial foram vencidos
     PARTIDA_DERROTA        // um gato invadiu a casa
 } ResultadoPartida;
 
@@ -46,7 +49,7 @@ typedef struct Partida {
     Projetil *projeteis;         // lista encadeada das bolinhas em voo
     int      saldo;              // petiscos disponíveis para gastar
     Carta    cartas[MAX_CARTAS]; // [0] é sempre o Pote de Ração
-    int      totalCartas;
+    int      totalCartas;        // 0 na fase do chefão (as cartas vêm pela esteira)
     Efeito   efeitos[MAX_EFEITOS];
     int      cartaSelecionada;   // índice em cartas[], ou -1
     bool     paSelecionada;
@@ -56,7 +59,9 @@ typedef struct Partida {
     bool     acelerada;          // true = jogo em 2x
     float    tempoJogado;        // segundos de partida (tempo real, mesmo em 2x)
     float    timerPetiscoCeu;    // segundos até o próximo petisco do céu
-    Hordas   hordas;             // as 4 hordas da fase (não usadas no tutorial)
+    Hordas   hordas;             // as 4 hordas da fase (só nas fases 1 a 4)
+    Chefao  *chefao;             // o Rei dos Gatos (só na fase do chefão; NULL nas outras)
+    Esteira  esteira;            // cartas grátis da fase do chefão (vazia nas outras)
     ResultadoPartida resultado;  // em andamento, vitória ou derrota
     int      passoTutorial;      // instrução atual do tutorial
     const char *aviso;           // mensagem temporária ("Petiscos insuficientes!")

@@ -1,5 +1,6 @@
 /* partida.c - Uma partida: cartas, petiscos, colocação de cachorros, pá,
- * luva, velocidade 2x, combate contra os gatos e tutorial. */
+ * luva, velocidade 2x, combate contra os gatos, tutorial e a fase do chefão
+ * (com a esteira). */
 
 #include "partida.h"
 #include "cenario.h"
@@ -65,20 +66,20 @@ static void avancar_tutorial(Partida *partida, int passoCumprido)
 }
 
 /* montar_deck: monta as cartas da partida: o Pote de Ração e, depois dele,
- * os cachorros do deck, todos prontos para comprar e nenhum selecionado. */
+ * os cachorros do deck, todos prontos para comprar. */
 static void montar_deck(Partida *partida, const TipoCachorro deck[], int total)
 {
     partida->totalCartas = total + 1;
-    partida->cartaSelecionada = -1;
     partida->cartas[0] = (Carta){ TIPO_POTE_RACAO, 0.0f };
     for (int i = 0; i < total; i++) partida->cartas[i + 1] = (Carta){ deck[i], 0.0f };
 }
 
 /* partida_criar: aloca a partida com malloc, zera tudo e prepara o campo
  * vazio, as listas de petiscos, gatos e bolinhas vazias, o saldo inicial,
- * a luva com todos os usos e as cartas: no tutorial, um deck fixo; nas
- * fases, o deck escolhido pelo jogador e as hordas. Retorna NULL se faltar
- * memória. */
+ * a luva com todos os usos, a esteira vazia e as cartas: no tutorial, um
+ * deck fixo; na fase do chefão, nenhuma (os cachorros vêm pela esteira) e o
+ * Rei, alocado com malloc; nas outras fases, o deck escolhido pelo jogador e
+ * as hordas. Retorna NULL se faltar memória. */
 Partida *partida_criar(int fase, const TipoCachorro deck[TAMANHO_DECK])
 {
     Partida *partida = malloc(sizeof(Partida));
@@ -95,9 +96,18 @@ Partida *partida_criar(int fase, const TipoCachorro deck[TAMANHO_DECK])
     partida->resultado = PARTIDA_EM_ANDAMENTO;
     partida->usosLuva = USOS_LUVA;
     partida->luvaLinha = -1;
+    partida->cartaSelecionada = -1;
+    partida->chefao = NULL;
+    esteira_iniciar(&partida->esteira);
 
     if (fase == FASE_TUTORIAL) {
         montar_deck(partida, deckTutorial, TAMANHO(deckTutorial));
+    } else if (fase == FASE_CHEFAO) {
+        partida->chefao = chefao_criar();
+        if (partida->chefao == NULL) {
+            free(partida);
+            return NULL;
+        }
     } else {
         montar_deck(partida, deck, TAMANHO_DECK);
         horda_iniciar(&partida->hordas, fase);
@@ -106,7 +116,7 @@ Partida *partida_criar(int fase, const TipoCachorro deck[TAMANHO_DECK])
 }
 
 /* partida_destruir: libera os cachorros do campo, as listas de petiscos,
- * gatos e bolinhas e a própria partida. */
+ * gatos e bolinhas, o chefão (se houver) e a própria partida. */
 void partida_destruir(Partida *partida)
 {
     if (partida == NULL) return;
@@ -114,6 +124,7 @@ void partida_destruir(Partida *partida)
     petisco_liberar_lista(&partida->petiscos);
     gato_liberar_lista(&partida->gatos);
     projetil_liberar_lista(&partida->projeteis);
+    chefao_destruir(partida->chefao);
     free(partida);
 }
 
@@ -185,11 +196,12 @@ static void desenhar_efeitos(const Partida *partida)
     }
 }
 
-/* cancelar_selecao: desmarca a carta, a pá e a luva (soltando o cachorro
- * que ela tiver pegado, sem gastar um uso). */
+/* cancelar_selecao: desmarca a carta (da barra ou da esteira), a pá e a
+ * luva (soltando o cachorro que ela tiver pegado, sem gastar um uso). */
 static void cancelar_selecao(Partida *partida)
 {
     partida->cartaSelecionada = -1;
+    partida->esteira.selecionada = -1;
     partida->paSelecionada = false;
     partida->luvaSelecionada = false;
     partida->luvaLinha = -1;
@@ -208,6 +220,31 @@ static void selecionar_carta(Partida *partida, int i)
     if (carta->recarga > 0.0f)                                   avisar(partida, "Carta recarregando!");
     else if (partida->saldo < cachorro_info(carta->tipo)->custo) avisar(partida, "Petiscos insuficientes!");
     else                                                         partida->cartaSelecionada = i;
+}
+
+/* selecionar_da_esteira: marca a carta i da esteira para ser colocada no
+ * campo (desmarcando o resto). Clicar de novo na mesma carta desmarca. */
+static void selecionar_da_esteira(Partida *partida, int i)
+{
+    bool jaSelecionada = (partida->esteira.selecionada == i);
+    cancelar_selecao(partida);
+    if (!jaSelecionada) partida->esteira.selecionada = i;
+}
+
+/* tipo_selecionado: raça da carta selecionada (na barra ou na esteira), ou
+ * -1 se nenhuma estiver. */
+static int tipo_selecionado(const Partida *partida)
+{
+    if (partida->cartaSelecionada >= 0) return partida->cartas[partida->cartaSelecionada].tipo;
+    if (partida->esteira.selecionada >= 0) return partida->esteira.cartas[partida->esteira.selecionada].tipo;
+    return -1;
+}
+
+/* celula_do_chefao: true se a coluna for o território do Rei (só na fase
+ * do chefão), onde não se pode pôr nem mover cachorros. */
+static bool celula_do_chefao(const Partida *partida, int coluna)
+{
+    return partida->chefao != NULL && coluna == COLUNA_CHEFAO;
 }
 
 /* alternar_pa: pega a pá (desmarcando o resto) ou a larga, se já estava com ela. */
@@ -262,8 +299,9 @@ static void usar_luva(Partida *partida, int linha, int coluna)
 }
 
 /* colocar_cachorro: cria o cachorro da carta selecionada (malloc) e o guarda
- * na célula, se ela estiver livre. Desconta o custo, inicia a recarga da
- * carta e avança o tutorial. */
+ * na célula, se ela estiver livre. Se a carta veio da esteira, só a tira de
+ * lá (é de graça); senão, desconta o custo, inicia a recarga da carta e
+ * avança o tutorial. */
 static void colocar_cachorro(Partida *partida, int linha, int coluna)
 {
     if (partida->mapa.grade[linha][coluna] != NULL) {
@@ -271,15 +309,19 @@ static void colocar_cachorro(Partida *partida, int linha, int coluna)
         return;
     }
 
-    Carta *carta = &partida->cartas[partida->cartaSelecionada];
-    const InfoCachorro *info = cachorro_info(carta->tipo);
-    Cachorro *novo = cachorro_criar(carta->tipo, linha, coluna);
+    Cachorro *novo = cachorro_criar((TipoCachorro)tipo_selecionado(partida), linha, coluna);
     if (novo == NULL) {
         avisar(partida, "Sem memória para um novo cachorro!");
         return;
     }
-
     mapa_colocar(&partida->mapa, novo);
+    if (partida->esteira.selecionada >= 0) {
+        esteira_remover(&partida->esteira, partida->esteira.selecionada);
+        return;
+    }
+
+    Carta *carta = &partida->cartas[partida->cartaSelecionada];
+    const InfoCachorro *info = cachorro_info(carta->tipo);
     partida->saldo -= info->custo;
     carta->recarga = info->recarga;
     partida->cartaSelecionada = -1;
@@ -328,23 +370,26 @@ static bool clicar_na_barra(Partida *partida, Vector2 mouse)
 }
 
 /* clicar_no_campo: age na célula clicada conforme o que está selecionado:
- * remove o cachorro com a pá, move com a luva ou coloca o da carta. */
+ * remove o cachorro com a pá, move com a luva ou coloca o da carta. No
+ * território do Rei, só avisa. */
 static void clicar_no_campo(Partida *partida, int linha, int coluna)
 {
-    if (partida->paSelecionada) {
+    if (celula_do_chefao(partida, coluna)) {
+        avisar(partida, "Aí é o território do Rei!");
+    } else if (partida->paSelecionada) {
         if (partida->mapa.grade[linha][coluna] != NULL) avancar_tutorial(partida, TUTORIAL_PA);
         mapa_remover(&partida->mapa, linha, coluna);
         partida->paSelecionada = false;
     } else if (partida->luvaSelecionada) {
         usar_luva(partida, linha, coluna);
-    } else if (partida->cartaSelecionada >= 0) {
+    } else if (tipo_selecionado(partida) >= 0) {
         colocar_cachorro(partida, linha, coluna);
     }
 }
 
 /* tratar_entrada: lê os atalhos (de teste e do jogo) e o clique esquerdo,
- * nesta ordem de prioridade: coletar petisco, botões da barra superior e,
- * por fim, a célula do campo. */
+ * nesta ordem de prioridade: coletar petisco, botões da barra superior,
+ * cartas da esteira e, por fim, a célula do campo. */
 static void tratar_entrada(Partida *partida, Vector2 mouse)
 {
     tratar_atalhos_teste(partida);
@@ -359,23 +404,32 @@ static void tratar_entrada(Partida *partida, Vector2 mouse)
     }
     if (clicar_na_barra(partida, mouse)) return;
 
+    int carta = esteira_carta_no_ponto(&partida->esteira, mouse);
+    if (carta >= 0) {
+        selecionar_da_esteira(partida, carta);
+        return;
+    }
     int linha, coluna;
     if (mapa_celula_no_ponto(mouse, &linha, &coluna)) clicar_no_campo(partida, linha, coluna);
 }
 
-/* fase_vencida: true quando as 4 hordas da fase foram vencidas ou, no
- * tutorial, quando o gato do último passo foi derrotado. */
+/* fase_vencida: true quando as 4 hordas da fase foram vencidas; na fase do
+ * chefão, quando o Rei foi derrotado; no tutorial, quando o gato do último
+ * passo foi derrotado. */
 static bool fase_vencida(const Partida *partida)
 {
+    if (partida->chefao != NULL) return chefao_derrotado(partida->chefao);
     if (partida_eh_tutorial(partida)) return partida->passoTutorial == TUTORIAL_GATO && partida->gatos == NULL;
     return horda_terminou(&partida->hordas);
 }
 
 /* partida_atualizar: avança o tempo da partida, o aviso, os efeitos e a
- * recarga das cartas; faz os cachorros agirem, manda os gatos das hordas
- * (fora do tutorial), move as bolinhas e os gatos, gera e move os petiscos
- * e trata a entrada do jogador. Se um gato invadir a casa, é derrota; se a
- * fase for vencida, vitória. Com o resultado decidido, a partida congela.
+ * recarga das cartas; faz os cachorros agirem; na fase do chefão, faz a
+ * esteira andar e o Rei agir (e leva até ele o dano das bolinhas que chegam
+ * à sua frente); nas outras, manda os gatos das hordas (fora do tutorial) e
+ * solta petiscos do céu. Move as bolinhas, os gatos e os petiscos e trata a
+ * entrada do jogador. Se um gato invadir a casa, é derrota; se a fase for
+ * vencida, vitória. Com o resultado decidido, a partida congela.
  * Com o 2x ligado, o jogo avança o dobro ('passo'), mas o relógio da
  * partida e os avisos seguem o tempo real ('dt'). */
 void partida_atualizar(Partida *partida, Vector2 mouse, float dt)
@@ -393,12 +447,18 @@ void partida_atualizar(Partida *partida, Vector2 mouse, float dt)
     }
 
     agir_cachorros(partida, passo);
-    if (!partida_eh_tutorial(partida)) horda_atualizar(&partida->hordas, &partida->gatos, passo);
-    projetil_atualizar_lista(&partida->projeteis, partida->gatos, passo);
+    if (partida->chefao != NULL) {
+        esteira_atualizar(&partida->esteira, passo);
+        chefao_atualizar(partida->chefao, &partida->gatos, &partida->mapa, passo);
+        chefao_ferir(partida->chefao, projetil_atualizar_lista(&partida->projeteis, partida->gatos, FRENTE_CHEFAO_X, passo));
+    } else {
+        if (!partida_eh_tutorial(partida)) horda_atualizar(&partida->hordas, &partida->gatos, passo);
+        projetil_atualizar_lista(&partida->projeteis, partida->gatos, LARGURA_VIRTUAL, passo);
+        soltar_petisco_do_ceu(partida, passo);
+    }
     if (gato_atualizar_lista(&partida->gatos, &partida->mapa, passo)) partida->resultado = PARTIDA_DERROTA;
     else if (fase_vencida(partida))                                   partida->resultado = PARTIDA_VITORIA;
 
-    soltar_petisco_do_ceu(partida, passo);
     petisco_atualizar_lista(&partida->petiscos, passo);
     tratar_entrada(partida, mouse);
 }
@@ -467,7 +527,8 @@ static void desenhar_botao_acelerar(const Partida *partida)
 
 /* desenhar_info: área entre a luva e o 2x: a fase, o tempo e, fora do
  * tutorial, "Horda N/4" com a barra que enche conforme os gatos da fase vão
- * saindo; por último, o lembrete do ESC. */
+ * saindo (na fase do chefão, conforme o Rei perde vida); por último, o
+ * lembrete do ESC. */
 static void desenhar_info(const Partida *partida)
 {
     int s = (int)partida->tempoJogado;
@@ -476,21 +537,29 @@ static void desenhar_info(const Partida *partida)
     ui_texto("ESC: pausa", INFO_X, 51, FONTE_PEQUENA, COR_BLOQUEADO);
     if (partida_eh_tutorial(partida)) return;
 
-    const char *horda = TextFormat("Horda %d/%d", horda_numero(&partida->hordas), HORDAS_POR_FASE);
+    const Chefao *chefao = partida->chefao;
+    int numero = (chefao != NULL) ? chefao->horda + 1 : horda_numero(&partida->hordas);
+    float progresso = (chefao != NULL) ? 1.0f - chefao_fracao_vida(chefao) : horda_progresso(&partida->hordas);
+    const char *horda = TextFormat("Horda %d/%d", numero, HORDAS_POR_FASE);
     Rectangle barra = { INFO_X, 43, INFO_FIM - INFO_X, 5 };
     ui_texto(horda, INFO_FIM - MeasureText(horda, FONTE_PEQUENA), 30, FONTE_PEQUENA, COR_TEXTO);
     DrawRectangleRec(barra, COR_SOMBRA);
-    DrawRectangle(barra.x, barra.y, barra.width * horda_progresso(&partida->hordas), barra.height, COR_SANGUE);
+    DrawRectangle(barra.x, barra.y, barra.width * progresso, barra.height, COR_SANGUE);
 }
 
-/* desenhar_hud: barra superior com o contador de petiscos, as cartas, a pá,
- * a luva, as informações da partida e o botão do 2x. */
+/* desenhar_hud: barra superior com o contador de petiscos e as cartas (na
+ * fase do chefão, a vida do Rei no lugar deles), a pá, a luva, as
+ * informações da partida e o botão do 2x. */
 static void desenhar_hud(const Partida *partida)
 {
     ui_desenhar_painel((Rectangle){ 4, 4, 632, 60 });
-    DrawRectangleRec(RET_CONTADOR, (Color){ 52, 36, 30, 255 });
-    petisco_desenhar_biscoito((Vector2){ 36, 24 }, 2);
-    ui_texto_centro(TextFormat("%d", partida->saldo), 36, 38, FONTE_MEDIA, COR_TEXTO);
+    if (partida->chefao != NULL) {
+        chefao_desenhar_vida(partida->chefao, (Rectangle){ 12, 8, 352, 52 });
+    } else {
+        DrawRectangleRec(RET_CONTADOR, (Color){ 52, 36, 30, 255 });
+        petisco_desenhar_biscoito((Vector2){ 36, 24 }, 2);
+        ui_texto_centro(TextFormat("%d", partida->saldo), 36, 38, FONTE_MEDIA, COR_TEXTO);
+    }
 
     for (int i = 0; i < partida->totalCartas; i++) desenhar_carta(partida, i);
     desenhar_ferramentas(partida);
@@ -517,7 +586,8 @@ static void desenhar_dica_carta(const Partida *partida, Vector2 mouse)
 /* desenhar_previa: marca de laranja a célula do cachorro pego pela luva e
  * destaca a célula sob o mouse. Com uma carta (ou um cachorro na luva),
  * mostra o cachorro transparente onde ele vai ficar; pinta de vermelho uma
- * célula ocupada onde não dá para colocar, ou de onde a pá vai remover. */
+ * célula ocupada (ou do território do Rei) onde não dá para colocar, ou de
+ * onde a pá vai remover. */
 static void desenhar_previa(const Partida *partida, Vector2 mouse)
 {
     const Cachorro *naLuva = cachorro_na_luva(partida);
@@ -527,9 +597,9 @@ static void desenhar_previa(const Partida *partida, Vector2 mouse)
     if (!mapa_celula_no_ponto(mouse, &linha, &coluna)) return;
 
     Rectangle r = mapa_retangulo_celula(linha, coluna);
-    bool ocupada = partida->mapa.grade[linha][coluna] != NULL;
-    bool selecionando = partida->paSelecionada || partida->luvaSelecionada || partida->cartaSelecionada >= 0;
-    int tipo = (partida->cartaSelecionada >= 0) ? (int)partida->cartas[partida->cartaSelecionada].tipo : (naLuva ? (int)naLuva->tipo : -1);
+    bool ocupada = partida->mapa.grade[linha][coluna] != NULL || celula_do_chefao(partida, coluna);
+    int tipo = (tipo_selecionado(partida) >= 0) ? tipo_selecionado(partida) : (naLuva ? (int)naLuva->tipo : -1);
+    bool selecionando = partida->paSelecionada || partida->luvaSelecionada || tipo >= 0;
 
     if (tipo >= 0 && !ocupada) cachorro_desenhar((TipoCachorro)tipo, mapa_centro_celula(linha, coluna), RAIO_CACHORRO, 0, Fade(WHITE, 0.5f));
     if (ocupada && (partida->paSelecionada || tipo >= 0)) DrawRectangleRec(r, Fade(COR_ALERTA, 0.35f));
@@ -564,29 +634,31 @@ static void desenhar_mensagem(const Partida *partida)
     }
 }
 
-/* desenhar_anuncio_horda: pouco antes de cada horda, escreve o anúncio dela
- * em letras grandes no meio do campo. */
+/* desenhar_anuncio_horda: pouco antes de cada horda (na fase do chefão,
+ * quando ela começa), escreve o anúncio em letras grandes no meio do campo. */
 static void desenhar_anuncio_horda(const Partida *partida)
 {
-    const char *anuncio = horda_anuncio(&partida->hordas);
+    const char *anuncio = (partida->chefao != NULL) ? chefao_anuncio(partida->chefao) : horda_anuncio(&partida->hordas);
     if (anuncio != NULL) ui_texto_centro(anuncio, LARGURA_VIRTUAL / 2, 200, FONTE_GRANDE, COR_ALERTA);
 }
 
 /* partida_desenhar: desenha, de trás para a frente, o céu e os prédios atrás
- * da barra, o campo com os cachorros, os gatos, as bolinhas, as explosões e
- * curas, a prévia sob o mouse, a barra superior, a faixa de mensagens, a
- * dica da carta sob o mouse, o anúncio da horda e os petiscos (por cima de
- * tudo). */
+ * da barra, o campo com os cachorros, o Rei (na fase do chefão), os gatos,
+ * as bolinhas, as explosões e curas, a prévia sob o mouse, a barra superior,
+ * a esteira (só na fase do chefão), a faixa de mensagens, a dica da carta
+ * sob o mouse, o anúncio da horda e os petiscos (por cima de tudo). */
 void partida_desenhar(const Partida *partida, Vector2 mouse)
 {
     cenario_desenhar_ceu(MAPA_Y, partida->tempoJogado);
     cenario_desenhar_skyline_distante(MAPA_Y);
     mapa_desenhar(&partida->mapa);
+    if (partida->chefao != NULL) chefao_desenhar(partida->chefao);
     gato_desenhar_lista(partida->gatos);
     projetil_desenhar_lista(partida->projeteis);
     desenhar_efeitos(partida);
     desenhar_previa(partida, mouse);
     desenhar_hud(partida);
+    if (partida->chefao != NULL) esteira_desenhar(&partida->esteira, mouse);
     desenhar_mensagem(partida);
     desenhar_dica_carta(partida, mouse);
     desenhar_anuncio_horda(partida);

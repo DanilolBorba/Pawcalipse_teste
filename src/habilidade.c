@@ -21,6 +21,13 @@ static Vector2 centro_do(const Cachorro *cachorro)
     return mapa_centro_celula(cachorro->linha, cachorro->coluna);
 }
 
+/* tem_alvo: true se há um gato na linha à frente do ponto x ou se é a fase
+ * do chefão (aí sempre vale atirar: as bolinhas que passam acertam o Rei). */
+static bool tem_alvo(const Partida *partida, int linha, float x)
+{
+    return partida->chefao != NULL || gato_na_mira(partida->gatos, linha, x);
+}
+
 /* lancar_bolinha: cria uma bolinha com o dano do cachorro, saindo da boca
  * dele mas na linha pedida; 'recuo' a põe alguns pixels mais para trás. */
 static void lancar_bolinha(Partida *partida, const Cachorro *cachorro, int linha, float recuo, bool gelada)
@@ -40,10 +47,10 @@ static bool produzir_petisco(Partida *partida, Cachorro *cachorro)
     return true;
 }
 
-/* atirar: o Beagle joga uma bolinha, se houver um gato na linha à frente. */
+/* atirar: o Beagle joga uma bolinha, se houver um alvo na linha à frente. */
 static bool atirar(Partida *partida, Cachorro *cachorro)
 {
-    if (!gato_na_mira(partida->gatos, cachorro->linha, centro_do(cachorro).x)) return false;
+    if (!tem_alvo(partida, cachorro->linha, centro_do(cachorro).x)) return false;
     lancar_bolinha(partida, cachorro, cachorro->linha, 0, false);
     return true;
 }
@@ -60,18 +67,18 @@ static bool atirar_duplo(Partida *partida, Cachorro *cachorro)
 /* atirar_gelo: o Husky joga uma bolinha gelada, que deixa o gato lento. */
 static bool atirar_gelo(Partida *partida, Cachorro *cachorro)
 {
-    if (!gato_na_mira(partida->gatos, cachorro->linha, centro_do(cachorro).x)) return false;
+    if (!tem_alvo(partida, cachorro->linha, centro_do(cachorro).x)) return false;
     lancar_bolinha(partida, cachorro, cachorro->linha, 0, true);
     return true;
 }
 
-/* atirar_tres_linhas: o Dachshund, se houver gato na sua linha ou numa
+/* atirar_tres_linhas: o Dachshund, se houver alvo na sua linha ou numa
  * vizinha, joga uma bolinha em cada uma dessas três linhas (as que existem). */
 static bool atirar_tres_linhas(Partida *partida, Cachorro *cachorro)
 {
     float x = centro_do(cachorro).x;
     bool temAlvo = false;
-    for (int l = cachorro->linha - 1; l <= cachorro->linha + 1; l++) temAlvo = temAlvo || gato_na_mira(partida->gatos, l, x);
+    for (int l = cachorro->linha - 1; l <= cachorro->linha + 1; l++) temAlvo = temAlvo || tem_alvo(partida, l, x);
     if (!temAlvo) return false;
 
     for (int l = cachorro->linha - 1; l <= cachorro->linha + 1; l++) {
@@ -116,13 +123,16 @@ static bool gritar(Partida *partida, Cachorro *cachorro)
 }
 
 /* explodir_area: o Rottweiler explode, ferindo os gatos da área 3x3 em volta
- * dele (a linha dele e as duas vizinhas), e some. */
+ * dele (a linha dele e as duas vizinhas) e o Rei, se a área chegar até ele,
+ * e some. */
 static bool explodir_area(Partida *partida, Cachorro *cachorro)
 {
     Vector2 centro = centro_do(cachorro);
+    int dano = cachorro_info(cachorro->tipo)->dano;
     for (int l = cachorro->linha - 1; l <= cachorro->linha + 1; l++) {
-        gato_ferir_area(partida->gatos, l, centro.x - RAIO_3X3, centro.x + RAIO_3X3, cachorro_info(cachorro->tipo)->dano);
+        gato_ferir_area(partida->gatos, l, centro.x - RAIO_3X3, centro.x + RAIO_3X3, dano);
     }
+    if (partida->chefao != NULL && centro.x + RAIO_3X3 >= FRENTE_CHEFAO_X) chefao_ferir(partida->chefao, dano);
     cachorro->vida = 0;
     partida_adicionar_efeito(partida, centro, RAIO_3X3, COR_EXPLOSAO);
     return true;
