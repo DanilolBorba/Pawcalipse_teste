@@ -33,6 +33,7 @@ typedef struct InfoGato {   // dados fixos de cada tipo de gato (provisórios)
     int      danoMordida;
     bool     imuneGelo;
     bool     pula;          // pula o primeiro cachorro que encontrar
+    int      pontos;        // pontos que o jogador ganha ao derrotá-lo
     float    escala;        // tamanho do desenho (1 = 64x64)
     IdSprite sprite;        // animação de andar (com o acessório, se tiver)
     Color    tinta;         // cor multiplicada no sprite (as variações do gato padrão)
@@ -54,7 +55,7 @@ typedef struct Gato {
 
 const InfoGato *gato_info(TipoGato tipo);                          // dados fixos de um tipo
 bool  gato_adicionar(Gato **lista, TipoGato tipo, int linha);      // novo gato na rua, no início da lista (false se faltar memória)
-bool  gato_atualizar_lista(Gato **lista, Mapa *mapa, float dt);    // anda/morde e remove os mortos; true se algum invadiu a casa
+bool  gato_atualizar_lista(Gato **lista, Mapa *mapa, float dt, int derrotados[]);  // anda/morde, remove e conta os mortos; true se algum invadiu a casa
 bool  gato_na_mira(const Gato *lista, int linha, float x);         // true se há um gato visível na linha, à direita de x
 Gato *gato_atingido(Gato *lista, int linha, float x);              // gato vivo da linha que ocupa o ponto x (NULL se nenhum)
 int   gato_ferir_area(Gato *lista, int linha, float xMin, float xMax, int dano);  // fere os gatos da linha entre xMin e xMax; retorna quantos

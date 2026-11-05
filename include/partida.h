@@ -22,6 +22,9 @@
 #define FASE_CHEFAO        5     // a fase do Rei dos Gatos, com a esteira
 #define MAX_EFEITOS        8     // explosões/curas na tela ao mesmo tempo
 #define USOS_LUVA          2     // vezes que a luva pode ser usada por partida
+#define BONUS_POR_FASE     500   // pontos por vencer, vezes o número da fase
+#define BONUS_REI          2000  // pontos a mais por derrotar o Rei dos Gatos
+#define BONUS_TEMPO        1000  // bônus de tempo máximo (perde 1 ponto por segundo)
 
 typedef enum ResultadoPartida {
     PARTIDA_EM_ANDAMENTO,
@@ -40,6 +43,14 @@ typedef struct Efeito {     // círculo que cresce e some (explosão, cura)
     float   tempo;          // segundos restantes (0 = vaga livre no vetor)
     Color   cor;
 } Efeito;
+
+typedef struct Pontuacao {   // pontos de uma partida, separados para a tela de resultado
+    int gatos;              // quantos gatos foram derrotados
+    int pontosGatos;        // pontos ganhos com eles (cada tipo vale um tanto)
+    int vitoria;            // bônus por vencer a fase (0 na derrota)
+    int tempo;              // bônus por vencer depressa (0 na derrota)
+    int total;
+} Pontuacao;
 
 typedef struct Partida {
     int      fase;               // 1 a 5, ou FASE_TUTORIAL
@@ -62,6 +73,7 @@ typedef struct Partida {
     Hordas   hordas;             // as 4 hordas da fase (só nas fases 1 a 4)
     Chefao  *chefao;             // o Rei dos Gatos (só na fase do chefão; NULL nas outras)
     Esteira  esteira;            // cartas grátis da fase do chefão (vazia nas outras)
+    int      gatosDerrotados[TOTAL_TIPOS_GATO];   // quantos gatos de cada tipo foram derrotados
     ResultadoPartida resultado;  // em andamento, vitória ou derrota
     int      passoTutorial;      // instrução atual do tutorial
     const char *aviso;           // mensagem temporária ("Petiscos insuficientes!")
@@ -74,5 +86,6 @@ void partida_desenhar(const Partida *partida, Vector2 mouse);       // campo, ba
 void partida_destruir(Partida *partida);                            // libera a partida e tudo o que ela alocou
 bool partida_eh_tutorial(const Partida *partida);                   // true se for o tutorial
 void partida_adicionar_efeito(Partida *partida, Vector2 centro, float raio, Color cor);  // mostra uma explosão/cura
+Pontuacao partida_pontuacao(const Partida *partida);                // pontos dos gatos, bônus e total
 
 #endif

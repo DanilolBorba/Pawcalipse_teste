@@ -12,14 +12,14 @@
 #define VELOCIDADE_DA_ARTE  3.2f    // px/s que a animação de andar "anda" (ver o LEIAME dos sprites)
 
 static const InfoGato infos[TOTAL_TIPOS_GATO] = {
-    /*                     nome              vida  velocidade mordida  imuneGelo  pula  escala  sprite              tinta */
-    [GATO_PADRAO]     = { "Gato Zumbi",       200,   8.0f,     100,    false,     false, 1.00f, SPRITE_GATO_PADRAO, { 255, 255, 255, 255 } },
-    [GATO_CAIXA]      = { "Gato da Caixa",    560,   8.0f,     100,    false,     false, 1.00f, SPRITE_GATO_CAIXA,  { 255, 255, 255, 255 } },
-    [GATO_LATA]       = { "Gato da Lata",    1300,   8.0f,     100,    false,     false, 1.00f, SPRITE_GATO_LATA,   { 255, 255, 255, 255 } },
-    [GATO_SIAMES]     = { "Siamês",           180,  16.0f,     100,    false,     false, 1.00f, SPRITE_GATO_PADRAO, { 245, 220, 175, 255 } },
-    [GATO_PERSA]      = { "Persa",            450,   7.0f,     100,    true,      false, 1.15f, SPRITE_GATO_PADRAO, { 235, 235, 250, 255 } },
-    [GATO_TELHADO]    = { "Gato de Telhado",  250,   9.0f,     100,    false,     true,  1.00f, SPRITE_GATO_PADRAO, { 165, 165, 180, 255 } },
-    [GATO_MAINE_COON] = { "Maine Coon",      3000,   5.0f,     300,    false,     false, 1.50f, SPRITE_GATO_PADRAO, { 205, 145,  95, 255 } },
+    /*                     nome              vida  velocidade mordida  imuneGelo  pula  pontos escala  sprite              tinta */
+    [GATO_PADRAO]     = { "Gato Zumbi",       200,   8.0f,     100,    false,     false,  10,  1.00f, SPRITE_GATO_PADRAO, { 255, 255, 255, 255 } },
+    [GATO_CAIXA]      = { "Gato da Caixa",    560,   8.0f,     100,    false,     false,  25,  1.00f, SPRITE_GATO_CAIXA,  { 255, 255, 255, 255 } },
+    [GATO_LATA]       = { "Gato da Lata",    1300,   8.0f,     100,    false,     false,  50,  1.00f, SPRITE_GATO_LATA,   { 255, 255, 255, 255 } },
+    [GATO_SIAMES]     = { "Siamês",           180,  16.0f,     100,    false,     false,  20,  1.00f, SPRITE_GATO_PADRAO, { 245, 220, 175, 255 } },
+    [GATO_PERSA]      = { "Persa",            450,   7.0f,     100,    true,      false,  35,  1.15f, SPRITE_GATO_PADRAO, { 235, 235, 250, 255 } },
+    [GATO_TELHADO]    = { "Gato de Telhado",  250,   9.0f,     100,    false,     true,   30,  1.00f, SPRITE_GATO_PADRAO, { 165, 165, 180, 255 } },
+    [GATO_MAINE_COON] = { "Maine Coon",      3000,   5.0f,     300,    false,     false, 100,  1.50f, SPRITE_GATO_PADRAO, { 205, 145,  95, 255 } },
 };
 
 /* gato_info: retorna um ponteiro para os dados fixos do tipo na tabela. */
@@ -97,16 +97,18 @@ static void mover_ou_morder(Gato *gato, Mapa *mapa, float dt)
 }
 
 /* gato_atualizar_lista: percorre a lista com um ponteiro para ponteiro:
- * remove os gatos sem vida, conta os tempos de dano e de lentidão e faz os
+ * remove os gatos sem vida (somando 1 em derrotados[tipo], o vetor com a
+ * contagem de cada tipo), conta os tempos de dano e de lentidão e faz os
  * outros andarem ou morderem. Retorna true se algum gato passou da coluna da
  * esquerda e entrou na casa. */
-bool gato_atualizar_lista(Gato **lista, Mapa *mapa, float dt)
+bool gato_atualizar_lista(Gato **lista, Mapa *mapa, float dt, int derrotados[])
 {
     bool invadiu = false;
     Gato **ligacao = lista;
     while (*ligacao != NULL) {
         Gato *gato = *ligacao;
         if (gato->vida <= 0) {
+            derrotados[gato->tipo]++;
             remover_no(ligacao);
             continue;
         }
