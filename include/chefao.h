@@ -13,7 +13,7 @@
 
 #define VIDA_CHEFAO      30000
 #define COLUNA_CHEFAO    (COLUNAS_MAPA - 1)   // coluna ocupada pelo Rei (nela não entram cachorros)
-#define FRENTE_CHEFAO_X  (MAPA_X + COLUNA_CHEFAO * TAMANHO_CELULA + 16)   // as bolinhas que chegam aqui o acertam
+#define FRENTE_CHEFAO_X  (MAPA_X + COLUNA_CHEFAO * TAMANHO_CELULA + 16)   // as babas que chegam aqui o acertam
 
 typedef struct Chefao {
     int   vida;

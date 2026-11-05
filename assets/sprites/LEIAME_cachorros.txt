@@ -1,0 +1,49 @@
+PAWPOCALYPSE - AS 10 RACAS DE CACHORRO (animacao parada, 64x64, fundo transparente)
+
+PASTAS
+  beagle/  bulldog/  dalmata/  husky/  pastor_alemao/  westie/
+  sao_bernardo/  dachshund/  rottweiler/  shiba_inu/
+  todos_os_cachorros.png  -> os 10 lado a lado (ampliados 4x), so para ver
+
+DENTRO DE CADA PASTA (exemplo: beagle)
+  beagle.png                        o cachorro parado (bom para o card da loja)
+  beagle_parado_spritesheet.png     512x64: 8 quadros de 64x64 lado a lado, sem espacamento
+  beagle_parado_spritesheet.json    posicao e duracao de cada quadro (formato do Aseprite)
+  frames/beagle_parado_01..08.png   quadros individuais 64x64
+  beagle_parado.gif                 tamanho real, loop infinito
+  beagle_parado_preview_8x.gif      ampliado 8x, so para visualizar
+  beagle.aseprite                   8 frames + duracoes + tag "parado"
+
+ANIMACAO
+  8 frames de 120 ms (ciclo de 0,96 s), em loop. O frame 1 e o cachorro parado.
+  Rabo abanando, cabeca respirando 1 px, lingua ofegante, piscada no frame 6
+  e orelha balancando. Rabos cotoco (Bulldog, Rottweiler) so tremem;
+  rabos enrolados (Husky, Shiba) balancam pouco.
+  Todos olham para a DIREITA (de frente para os gatos, que andam para a esquerda).
+  Os pes tocam o chao na linha y = 58, igual aos gatos zumbis.
+  A coleira cobre o pescoco e acompanha a cabeca na respiracao.
+
+COLEIRAS E PINGENTES
+  Beagle         laranja    bolinha de tenis      (atirador)
+  Bulldog        couro      escudo de prata       (muralha)
+  Dalmata        azul       sino dourado          (atirador duplo)
+  Husky          roxo       floco de neve         (latido gelado)
+  Pastor Alemao  oliva      distintivo de estrela (mordida forte)
+  Westie         rosa       osso                  (toca-armadilha)
+  Sao Bernardo   vinho      barril com cruz       (cura vizinhos)
+  Dachshund      amarelo    coracao               (ataca 3 linhas)
+  Rottweiler     vermelho   bomba + espinhos      (explosao 3x3)
+  Shiba Inu      turquesa   flor de sakura        (grito assustador)
+
+USO NO JOGO (raylib)
+  Texture2D tex = LoadTexture("claude/beagle/beagle_parado_spritesheet.png");
+  SetTextureFilter(tex, TEXTURE_FILTER_POINT);      // pixel art sem borrar
+  float t = 0; int frame = 0;
+  // a cada atualizacao:
+  t += GetFrameTime();
+  if (t >= 0.12f) { t -= 0.12f; frame = (frame + 1) % 8; }
+  Rectangle src = { frame * 64.0f, 0, 64, 64 };
+  Rectangle dst = { x, y, 64 * escala, 64 * escala };
+  DrawTexturePro(tex, src, dst, (Vector2){ 0, 0 }, 0, WHITE);
+  Dica: varie o frame inicial de cada cachorro (frame = rand() % 8) para eles
+  nao abanarem o rabo todos ao mesmo tempo.

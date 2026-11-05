@@ -37,11 +37,13 @@ typedef struct Carta {
     float        recarga;   // segundos até poder comprar de novo
 } Carta;
 
-typedef struct Efeito {     // círculo que cresce e some (explosão, cura)
+typedef struct Efeito {     // círculo que cresce e some (explosão, cura) ou latido
     Vector2 centro;
-    float   raio;
+    float   raio;           // tamanho final do círculo (ou alcance das ondas do latido)
     float   tempo;          // segundos restantes (0 = vaga livre no vetor)
+    float   duracao;        // segundos que ele dura ao todo
     Color   cor;
+    const char *latido;     // texto do latido ("AU!"); NULL = círculo
 } Efeito;
 
 typedef struct Pontuacao {   // pontos de uma partida, separados para a tela de resultado
@@ -57,7 +59,7 @@ typedef struct Partida {
     Mapa     mapa;               // matriz 4x8 com os cachorros
     Petisco *petiscos;           // lista encadeada dos petiscos na tela
     Gato    *gatos;              // lista encadeada dos gatos em campo
-    Projetil *projeteis;         // lista encadeada das bolinhas em voo
+    Projetil *projeteis;         // lista encadeada das babas em voo
     int      saldo;              // petiscos disponíveis para gastar
     Carta    cartas[MAX_CARTAS]; // [0] é sempre o Pote de Ração
     int      totalCartas;        // 0 na fase do chefão (as cartas vêm pela esteira)
@@ -86,6 +88,7 @@ void partida_desenhar(const Partida *partida, Vector2 mouse);       // campo, ba
 void partida_destruir(Partida *partida);                            // libera a partida e tudo o que ela alocou
 bool partida_eh_tutorial(const Partida *partida);                   // true se for o tutorial
 void partida_adicionar_efeito(Partida *partida, Vector2 centro, float raio, Color cor);  // mostra uma explosão/cura
+void partida_adicionar_latido(Partida *partida, Vector2 centro, const char *texto, float alcance, Color cor);  // mostra um cachorro latindo
 Pontuacao partida_pontuacao(const Partida *partida);                // pontos dos gatos, bônus e total
 
 #endif

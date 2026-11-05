@@ -22,19 +22,20 @@ static Vector2 centro_do(const Cachorro *cachorro)
 }
 
 /* tem_alvo: true se há um gato na linha à frente do ponto x ou se é a fase
- * do chefão (aí sempre vale atirar: as bolinhas que passam acertam o Rei). */
+ * do chefão (aí sempre vale atirar: as babas que passam acertam o Rei). */
 static bool tem_alvo(const Partida *partida, int linha, float x)
 {
     return partida->chefao != NULL || gato_na_mira(partida->gatos, linha, x);
 }
 
-/* lancar_bolinha: cria uma bolinha com o dano do cachorro, saindo da boca
- * dele mas na linha pedida; 'recuo' a põe alguns pixels mais para trás. */
-static void lancar_bolinha(Partida *partida, const Cachorro *cachorro, int linha, float recuo, bool gelada)
+/* cuspir: cria uma baba do estilo pedido com o dano do cachorro, saindo da
+ * boca dele (no sprite) mas na linha pedida; 'recuo' a põe alguns pixels
+ * mais para trás. */
+static void cuspir(Partida *partida, const Cachorro *cachorro, int linha, float recuo, EstiloBaba estilo)
 {
     Vector2 centro = mapa_centro_celula(linha, cachorro->coluna);
-    Vector2 boca = { centro.x + 16 - recuo, centro.y - 4 };
-    projetil_adicionar(&partida->projeteis, boca, linha, cachorro_info(cachorro->tipo)->dano, gelada);
+    Vector2 boca = { centro.x + 22 - recuo, centro.y + 4 };
+    projetil_adicionar(&partida->projeteis, boca, linha, cachorro_info(cachorro->tipo)->dano, estilo);
 }
 
 /* produzir_petisco: o Pote de Ração solta um petisco perto de onde aparece
@@ -47,33 +48,34 @@ static bool produzir_petisco(Partida *partida, Cachorro *cachorro)
     return true;
 }
 
-/* atirar: o Beagle joga uma bolinha, se houver um alvo na linha à frente. */
+/* atirar: o Beagle cospe uma gota de baba, se houver um alvo na linha à frente. */
 static bool atirar(Partida *partida, Cachorro *cachorro)
 {
     if (!tem_alvo(partida, cachorro->linha, centro_do(cachorro).x)) return false;
-    lancar_bolinha(partida, cachorro, cachorro->linha, 0, false);
+    cuspir(partida, cachorro, cachorro->linha, 0, BABA_GOTA);
     return true;
 }
 
-/* atirar_duplo: o Dálmata atira como o Beagle e logo depois (uma bolinha
- * um pouco mais atrás) atira de novo. */
+/* atirar_duplo: o Dálmata, se houver um alvo na linha à frente, cospe duas
+ * bolhas de baba seguidas (a segunda um pouco mais atrás). */
 static bool atirar_duplo(Partida *partida, Cachorro *cachorro)
 {
-    if (!atirar(partida, cachorro)) return false;
-    lancar_bolinha(partida, cachorro, cachorro->linha, 14, false);
+    if (!tem_alvo(partida, cachorro->linha, centro_do(cachorro).x)) return false;
+    cuspir(partida, cachorro, cachorro->linha, 0, BABA_BOLHAS);
+    cuspir(partida, cachorro, cachorro->linha, 14, BABA_BOLHAS);
     return true;
 }
 
-/* atirar_gelo: o Husky joga uma bolinha gelada, que deixa o gato lento. */
+/* atirar_gelo: o Husky cospe uma baba congelada, que deixa o gato lento. */
 static bool atirar_gelo(Partida *partida, Cachorro *cachorro)
 {
     if (!tem_alvo(partida, cachorro->linha, centro_do(cachorro).x)) return false;
-    lancar_bolinha(partida, cachorro, cachorro->linha, 0, true);
+    cuspir(partida, cachorro, cachorro->linha, 0, BABA_GELADA);
     return true;
 }
 
 /* atirar_tres_linhas: o Dachshund, se houver alvo na sua linha ou numa
- * vizinha, joga uma bolinha em cada uma dessas três linhas (as que existem). */
+ * vizinha, cospe um jato de baba em cada uma dessas três linhas (as que existem). */
 static bool atirar_tres_linhas(Partida *partida, Cachorro *cachorro)
 {
     float x = centro_do(cachorro).x;
@@ -82,17 +84,20 @@ static bool atirar_tres_linhas(Partida *partida, Cachorro *cachorro)
     if (!temAlvo) return false;
 
     for (int l = cachorro->linha - 1; l <= cachorro->linha + 1; l++) {
-        if (l >= 0 && l < LINHAS_MAPA) lancar_bolinha(partida, cachorro, l, 0, false);
+        if (l >= 0 && l < LINHAS_MAPA) cuspir(partida, cachorro, l, 0, BABA_JATO);
     }
     return true;
 }
 
-/* morder: o Pastor Alemão morde de uma vez todos os gatos da sua linha que
- * estejam até 1,5 célula à frente. Age só se acertar alguém. */
+/* morder: o Pastor Alemão late ("AU!") e morde de uma vez todos os gatos da
+ * sua linha que estejam até 1,5 célula à frente. Age só se acertar alguém. */
 static bool morder(Partida *partida, Cachorro *cachorro)
 {
-    float x = centro_do(cachorro).x;
-    return gato_ferir_area(partida->gatos, cachorro->linha, x - RAIO_GATO, x + ALCANCE_PASTOR, cachorro_info(cachorro->tipo)->dano) > 0;
+    Vector2 centro = centro_do(cachorro);
+    if (gato_ferir_area(partida->gatos, cachorro->linha, centro.x - RAIO_GATO, centro.x + ALCANCE_PASTOR, cachorro_info(cachorro->tipo)->dano) == 0) return false;
+
+    partida_adicionar_latido(partida, centro, "AU!", TAMANHO_CELULA * 0.6f, WHITE);
+    return true;
 }
 
 /* atacar_da_toca: o Westie, um terrier, passa os primeiros segundos cavando
@@ -110,15 +115,15 @@ static bool atacar_da_toca(Partida *partida, Cachorro *cachorro)
     return true;
 }
 
-/* gritar: o Shiba Inu solta o famoso "grito Shiba" quando há gato na sua
- * linha até 2,5 células à frente: o susto faz esses gatos recuarem meia
- * célula. Age só se assustar alguém. */
+/* gritar: o Shiba Inu solta o famoso "grito Shiba" (um latido longo e
+ * amarelo) quando há gato na sua linha até 2,5 células à frente: o susto faz
+ * esses gatos recuarem meia célula. Age só se assustar alguém. */
 static bool gritar(Partida *partida, Cachorro *cachorro)
 {
     Vector2 centro = centro_do(cachorro);
     if (gato_empurrar_area(partida->gatos, cachorro->linha, centro.x, centro.x + ALCANCE_GRITO, RECUO_GRITO) == 0) return false;
 
-    partida_adicionar_efeito(partida, centro, TAMANHO_CELULA * 0.8f, COR_GRITO);
+    partida_adicionar_latido(partida, centro, "AUUUU!", TAMANHO_CELULA * 1.5f, COR_GRITO);
     return true;
 }
 
