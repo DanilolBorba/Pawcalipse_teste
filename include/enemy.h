@@ -26,7 +26,7 @@ typedef enum TipoGato {
     TOTAL_TIPOS_GATO
 } TipoGato;
 
-typedef struct InfoGato {   // dados fixos de cada tipo de gato (provisórios)
+typedef struct InfoGato {   // dados fixos de cada tipo de gato
     const char *nome;
     int      vidaMaxima;
     float    velocidade;    // pixels por segundo

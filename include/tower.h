@@ -24,7 +24,7 @@ typedef enum TipoCachorro {
     TOTAL_TIPOS_CACHORRO
 } TipoCachorro;
 
-typedef struct InfoCachorro {   // dados fixos de cada raça (provisórios)
+typedef struct InfoCachorro {   // dados fixos de cada raça
     const char *nome;
     const char *papel;     // função na defesa
     int   custo;           // preço em petiscos
