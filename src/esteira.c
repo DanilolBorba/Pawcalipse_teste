@@ -106,7 +106,7 @@ static void desenhar_dica_esteira(const Esteira *esteira, Vector2 mouse)
 }
 
 /* esteira_desenhar: a faixa escura com listras que sobem (dando a ideia de
- * movimento), as cartas (sem custo: são de graça), com borda verde na
+ * movimento), as cartas com o retrato do cachorro (sem custo: são de graça), com borda verde na
  * selecionada e laranja sob o mouse, e a dica da carta sob o mouse. */
 void esteira_desenhar(const Esteira *esteira, Vector2 mouse)
 {
@@ -122,7 +122,7 @@ void esteira_desenhar(const Esteira *esteira, Vector2 mouse)
         bool mouseEmCima = CheckCollisionPointRec(mouse, r);
 
         DrawRectangleRec(r, (Color){ 196, 176, 140, 255 });
-        cachorro_desenhar(esteira->cartas[i].tipo, (Vector2){ r.x + r.width / 2, r.y + r.height / 2 }, 13, 0, WHITE);
+        cachorro_desenhar_retrato(esteira->cartas[i].tipo, (Vector2){ r.x + r.width / 2, r.y + r.height / 2 });
         DrawRectangleLinesEx(r, 2, (esteira->selecionada == i) ? COR_INFECTADO : (mouseEmCima ? COR_PETISCO : COR_BORDA));
     }
     desenhar_dica_esteira(esteira, mouse);

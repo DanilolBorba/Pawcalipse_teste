@@ -241,6 +241,7 @@ void audio_iniciar(Audio *audio)
 {
     audio->pronto = false;
     audio->mudo = false;
+    audio->volume = VOLUME_MUSICA;
     audio->musica = (Music){ 0 };
     audio->dadosWav = NULL;
 
@@ -270,7 +271,7 @@ void audio_iniciar(Audio *audio)
     }
 
     audio->musica.looping = true;
-    SetMusicVolume(audio->musica, VOLUME_MUSICA);
+    SetMusicVolume(audio->musica, audio->volume);
     PlayMusicStream(audio->musica);
     audio->pronto = true;
 }
@@ -283,9 +284,18 @@ void audio_atualizar(Audio *audio)
 
     if (IsKeyPressed(KEY_M)) {
         audio->mudo = !audio->mudo;
-        SetMusicVolume(audio->musica, audio->mudo ? 0.0f : VOLUME_MUSICA);
+        SetMusicVolume(audio->musica, audio->mudo ? 0.0f : audio->volume);
     }
     UpdateMusicStream(audio->musica);
+}
+
+/* audio_definir_volume: guarda o novo volume da música (limitado entre 0 e
+ * 1), tira do mudo e o aplica, se a música estiver tocando. */
+void audio_definir_volume(Audio *audio, float volume)
+{
+    audio->volume = (volume < 0.0f) ? 0.0f : (volume > 1.0f ? 1.0f : volume);
+    audio->mudo = false;
+    if (audio->pronto) SetMusicVolume(audio->musica, audio->volume);
 }
 
 /* audio_finalizar: para e descarrega a música, libera o WAV gerado e fecha

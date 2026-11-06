@@ -10,12 +10,14 @@
 typedef struct Audio {
     bool           pronto;    // dispositivo de áudio e música carregados
     bool           mudo;      // alternado com a tecla M
+    float          volume;    // volume da música, de 0 a 1 (deslizador do menu)
     Music          musica;
     unsigned char *dadosWav;  // música gerada em memória (NULL se veio de arquivo)
 } Audio;
 
 void audio_iniciar(Audio *audio);    // abre o áudio e toca a música em loop
 void audio_atualizar(Audio *audio);  // todo frame: alimenta a música e trata a tecla M
+void audio_definir_volume(Audio *audio, float volume);   // muda o volume da música (e tira do mudo)
 void audio_finalizar(Audio *audio);  // para a música e libera tudo
 
 #endif

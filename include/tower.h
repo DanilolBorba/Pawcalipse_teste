@@ -52,5 +52,6 @@ Cachorro *cachorro_criar(TipoCachorro tipo, int linha, int coluna);      // aloc
 void cachorro_destruir(Cachorro *cachorro);                              // libera um cachorro
 int  cachorro_quadro(const Cachorro *cachorro);                          // quadro da animação no campo
 void cachorro_desenhar(TipoCachorro tipo, Vector2 centro, float raio, int quadro, Color tinta);  // desenha o tipo (sprite ou forma)
+void cachorro_desenhar_retrato(TipoCachorro tipo, Vector2 centro);       // a cabeça do tipo em tamanho real, para as cartas
 
 #endif

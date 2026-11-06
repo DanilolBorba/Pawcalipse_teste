@@ -3,6 +3,7 @@
 #include "chefao.h"
 #include "config.h"
 #include "horda.h"
+#include "som.h"
 #include "ui.h"
 
 #include <math.h>
@@ -114,6 +115,7 @@ static void trocar_horda(Chefao *chefao)
     chefao->horda = horda;
     chefao->timerAnuncio = DURACAO_ANUNCIO;
     chefao->timerInvocar = 0.0f;
+    som_tocar(SOM_RUGIDO);
 }
 
 /* sortear_linha_com_cachorro: sorteia uma das linhas que têm pelo menos um
@@ -167,6 +169,7 @@ void chefao_atualizar(Chefao *chefao, Gato **gatos, Mapa *mapa, float dt)
     chefao->timerBola = INTERVALO_BOLA;
     chefao->bolaLinha = sortear_linha_com_cachorro(mapa);
     chefao->bolaX = FRENTE_CHEFAO_X;
+    if (chefao->bolaLinha >= 0) som_tocar(SOM_RUGIDO);
 }
 
 /* chefao_ferir: tira 'dano' da vida (sem passar de zero) e deixa o Rei

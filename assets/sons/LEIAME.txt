@@ -1,0 +1,27 @@
+PAWPOCALYPSE - EFEITOS SONOROS
+
+Todos são WAV mono, 22050 Hz, 16 bits, sintetizados por computador (sem
+gravações). Para trocar um som por outro melhor (por exemplo, uma gravação
+de sirene de verdade), basta salvar o novo arquivo com o MESMO nome nesta
+pasta. Se um arquivo faltar, o jogo continua, só que sem aquele efeito.
+
+  clique.wav       botões dos menus
+  carta.wav        cartas, pá, luva e 2x durante a partida (e cartas do deck)
+  iniciar.wav      a partida começa
+  colocar.wav      cachorro posto no campo
+  pa.wav           cachorro tirado com a pá
+  luva.wav         cachorro pego ou mudado de lugar com a luva
+  petisco.wav      petisco coletado
+  racao.wav        o Pote de Ração soltando um petisco
+  cuspe.wav        atiradores cuspindo baba (Beagle, Dálmata, Husky, Dachshund)
+  latido.wav       Pastor Alemão ("AU!"), Shiba Inu ("AUUUU!") e Westie saindo da toca
+  explosao.wav     Rottweiler
+  zumbido.wav      gato zumbi entrando no campo (gemido e passos arrastados)
+  mordida.wav      gato mordendo um cachorro
+  gato_morre.wav   gato derrotado
+  rugido.wav       o Rei dos Gatos (troca de horda e bola de pelo)
+  alerta.wav       sirene mecânica: uma horda está chegando
+  vitoria.wav      fase vencida
+  derrota.wav      a casa foi invadida
+
+O volume dos efeitos e o da música são ajustados no menu inicial.

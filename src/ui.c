@@ -1,14 +1,18 @@
 /* ui.c - Elementos de interface reutilizados por todas as telas. */
 
 #include "ui.h"
+#include "som.h"
 
 #include <string.h>
 
 /* ui_botao_clicado: verifica se o botão esquerdo do mouse foi pressionado
- * sobre o botão neste frame. Retorna true em caso de clique. */
+ * sobre o botão neste frame. Em caso de clique, toca o som de clique e
+ * retorna true. */
 bool ui_botao_clicado(const Botao *botao, Vector2 mouse)
 {
-    return CheckCollisionPointRec(mouse, botao->area) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    if (!CheckCollisionPointRec(mouse, botao->area) || !IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) return false;
+    som_tocar(SOM_CLIQUE);
+    return true;
 }
 
 /* ui_desenhar_botao: desenha o botão com uma sombra "dura" de pixel-art.
@@ -99,4 +103,32 @@ void ui_desenhar_pixel_art(const char *figura[], int linhas, Vector2 canto, int 
             if (achado != NULL) DrawRectangle(canto.x + c * escala, canto.y + l * escala, escala, escala, cores[achado - simbolos]);
         }
     }
+}
+
+/* ui_deslizador_atualizar: enquanto o botão esquerdo estiver apertado sobre
+ * a barra (com uma folga em volta, para ser fácil de pegar), o valor segue a
+ * posição do mouse: 0 na ponta esquerda e 1 na direita. Retorna true se o
+ * valor mudou. */
+bool ui_deslizador_atualizar(Rectangle area, float *valor, Vector2 mouse)
+{
+    Rectangle folga = { area.x - 6, area.y - 6, area.width + 12, area.height + 12 };
+    if (!IsMouseButtonDown(MOUSE_BUTTON_LEFT) || !CheckCollisionPointRec(mouse, folga)) return false;
+
+    float novo = (mouse.x - area.x) / area.width;
+    novo = (novo < 0.0f) ? 0.0f : (novo > 1.0f ? 1.0f : novo);
+    bool mudou = (novo != *valor);
+    *valor = novo;
+    return mudou;
+}
+
+/* ui_desenhar_deslizador: o rótulo à esquerda, a barra preenchida até o
+ * valor, o botão redondo na posição do valor e a porcentagem à direita. */
+void ui_desenhar_deslizador(Rectangle area, float valor, const char *rotulo)
+{
+    ui_texto(rotulo, area.x - MeasureText(rotulo, FONTE_PEQUENA) - 10, area.y - 2, FONTE_PEQUENA, COR_TEXTO);
+    DrawRectangleRec(area, COR_SOMBRA);
+    DrawRectangle(area.x, area.y, area.width * valor, area.height, COR_INFECTADO);
+    DrawRectangleLinesEx(area, 1, COR_BORDA);
+    DrawCircleV((Vector2){ area.x + area.width * valor, area.y + area.height / 2 }, 5, COR_TEXTO);
+    ui_texto(TextFormat("%d%%", (int)(valor * 100 + 0.5f)), area.x + area.width + 10, area.y - 2, FONTE_PEQUENA, COR_TEXTO);
 }

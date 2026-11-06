@@ -2,6 +2,7 @@
  * que liga cada raça à sua. */
 
 #include "habilidade.h"
+#include "som.h"
 
 #include <stdlib.h>
 
@@ -36,15 +37,17 @@ static void cuspir(Partida *partida, const Cachorro *cachorro, int linha, float 
     Vector2 centro = mapa_centro_celula(linha, cachorro->coluna);
     Vector2 boca = { centro.x + 22 - recuo, centro.y + 4 };
     projetil_adicionar(&partida->projeteis, boca, linha, cachorro_info(cachorro->tipo)->dano, estilo);
+    som_tocar(SOM_CUSPE);
 }
 
 /* produzir_petisco: o Pote de Ração solta um petisco perto de onde aparece
  * a estrela do sprite, caindo à direita da tigela (para não se esconder no
- * monte de ração do desenho). Sempre age. */
+ * monte de ração do desenho), com o barulho da ração caindo. Sempre age. */
 static bool produzir_petisco(Partida *partida, Cachorro *cachorro)
 {
     Vector2 centro = centro_do(cachorro);
     petisco_adicionar(&partida->petiscos, (Vector2){ centro.x + 18 + rand() % 7 - 3, centro.y + 6 }, centro.y + 20);
+    som_tocar(SOM_RACAO);
     return true;
 }
 
@@ -112,6 +115,7 @@ static bool atacar_da_toca(Partida *partida, Cachorro *cachorro)
 
     cachorro->vida = 0;
     partida_adicionar_efeito(partida, centro_do(cachorro), TAMANHO_CELULA * 0.6f, COR_TERRA);
+    som_tocar(SOM_LATIDO);
     return true;
 }
 
@@ -140,6 +144,7 @@ static bool explodir_area(Partida *partida, Cachorro *cachorro)
     if (partida->chefao != NULL && centro.x + RAIO_3X3 >= FRENTE_CHEFAO_X) chefao_ferir(partida->chefao, dano);
     cachorro->vida = 0;
     partida_adicionar_efeito(partida, centro, RAIO_3X3, COR_EXPLOSAO);
+    som_tocar(SOM_EXPLOSAO);
     return true;
 }
 

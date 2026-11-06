@@ -6,8 +6,10 @@
 #include "cenario.h"
 #include "config.h"
 #include "habilidade.h"
+#include "som.h"
 #include "ui.h"
 
+#include <math.h>
 #include <stdlib.h>
 
 #define TAMANHO(v)       ((int)(sizeof(v) / sizeof((v)[0])))
@@ -191,10 +193,11 @@ void partida_adicionar_efeito(Partida *partida, Vector2 centro, float raio, Colo
     ocupar_vaga_efeito(partida, (Efeito){ centro, raio, DURACAO_EFEITO, DURACAO_EFEITO, cor, NULL });
 }
 
-/* partida_adicionar_latido: mostra o latido do cachorro da célula 'centro':
- * ondas que se abrem até 'alcance' e o texto, na cor pedida. */
+/* partida_adicionar_latido: mostra (e toca) o latido do cachorro da célula
+ * 'centro': ondas que se abrem até 'alcance' e o texto, na cor pedida. */
 void partida_adicionar_latido(Partida *partida, Vector2 centro, const char *texto, float alcance, Color cor)
 {
+    som_tocar(SOM_LATIDO);
     ocupar_vaga_efeito(partida, (Efeito){ centro, alcance, DURACAO_LATIDO, DURACAO_LATIDO, cor, texto });
 }
 
@@ -317,6 +320,7 @@ static void usar_luva(Partida *partida, int linha, int coluna)
         if (partida->mapa.grade[linha][coluna] == NULL) return;
         partida->luvaLinha = linha;
         partida->luvaColuna = coluna;
+        som_tocar(SOM_LUVA);
         return;
     }
 
@@ -330,6 +334,7 @@ static void usar_luva(Partida *partida, int linha, int coluna)
         return;
     }
     partida->usosLuva--;
+    som_tocar(SOM_LUVA);
     cancelar_selecao(partida);
 }
 
@@ -350,6 +355,7 @@ static void colocar_cachorro(Partida *partida, int linha, int coluna)
         return;
     }
     mapa_colocar(&partida->mapa, novo);
+    som_tocar(SOM_COLOCAR);
     if (partida->esteira.selecionada >= 0) {
         esteira_remover(&partida->esteira, partida->esteira.selecionada);
         return;
@@ -412,7 +418,10 @@ static void clicar_no_campo(Partida *partida, int linha, int coluna)
     if (celula_do_chefao(partida, coluna)) {
         avisar(partida, "Aí é o território do Rei!");
     } else if (partida->paSelecionada) {
-        if (partida->mapa.grade[linha][coluna] != NULL) avancar_tutorial(partida, TUTORIAL_PA);
+        if (partida->mapa.grade[linha][coluna] != NULL) {
+            avancar_tutorial(partida, TUTORIAL_PA);
+            som_tocar(SOM_PA);
+        }
         mapa_remover(&partida->mapa, linha, coluna);
         partida->paSelecionada = false;
     } else if (partida->luvaSelecionada) {
@@ -434,13 +443,17 @@ static void tratar_entrada(Partida *partida, Vector2 mouse)
     int valor = petisco_coletar(&partida->petiscos, mouse);
     if (valor > 0) {
         partida->saldo += valor;
+        som_tocar(SOM_PETISCO);
         avancar_tutorial(partida, TUTORIAL_COLETAR);
         return;
     }
-    if (clicar_na_barra(partida, mouse)) return;
-
+    if (clicar_na_barra(partida, mouse)) {
+        som_tocar(SOM_CARTA);
+        return;
+    }
     int carta = esteira_carta_no_ponto(&partida->esteira, mouse);
     if (carta >= 0) {
+        som_tocar(SOM_CARTA);
         selecionar_da_esteira(partida, carta);
         return;
     }
@@ -458,13 +471,21 @@ static bool fase_vencida(const Partida *partida)
     return horda_terminou(&partida->hordas);
 }
 
+/* anuncio_atual: o texto do anúncio da horda que está na tela (das hordas
+ * ou, na fase do chefão, do Rei), ou NULL se não houver nenhum. */
+static const char *anuncio_atual(const Partida *partida)
+{
+    return (partida->chefao != NULL) ? chefao_anuncio(partida->chefao) : horda_anuncio(&partida->hordas);
+}
+
 /* partida_atualizar: avança o tempo da partida, o aviso, os efeitos e a
  * recarga das cartas; faz os cachorros agirem; na fase do chefão, faz a
  * esteira andar e o Rei agir (e leva até ele o dano das babas que chegam
  * à sua frente); nas outras, manda os gatos das hordas (fora do tutorial) e
  * solta petiscos do céu. Move as babas, os gatos e os petiscos e trata a
- * entrada do jogador. Se um gato invadir a casa, é derrota; se a fase for
- * vencida, vitória. Com o resultado decidido, a partida congela.
+ * entrada do jogador. Quando um anúncio de horda aparece, toca a sirene. Se
+ * um gato invadir a casa, é derrota; se a fase for vencida, vitória (cada
+ * uma com a sua musiquinha). Com o resultado decidido, a partida congela.
  * Com o 2x ligado, o jogo avança o dobro ('passo'), mas o relógio da
  * partida e os avisos seguem o tempo real ('dt'). */
 void partida_atualizar(Partida *partida, Vector2 mouse, float dt)
@@ -472,6 +493,7 @@ void partida_atualizar(Partida *partida, Vector2 mouse, float dt)
     if (partida->resultado != PARTIDA_EM_ANDAMENTO) return;
 
     float passo = partida->acelerada ? dt * 2.0f : dt;
+    bool anunciando = anuncio_atual(partida) != NULL;
     partida->tempoJogado += dt;
     if (partida->timerAviso > 0.0f) partida->timerAviso -= dt;
     for (int i = 0; i < MAX_EFEITOS; i++) {
@@ -493,6 +515,8 @@ void partida_atualizar(Partida *partida, Vector2 mouse, float dt)
     }
     if (gato_atualizar_lista(&partida->gatos, &partida->mapa, passo, partida->gatosDerrotados)) partida->resultado = PARTIDA_DERROTA;
     else if (fase_vencida(partida))                                   partida->resultado = PARTIDA_VITORIA;
+    if (partida->resultado != PARTIDA_EM_ANDAMENTO) som_tocar(partida->resultado == PARTIDA_VITORIA ? SOM_VITORIA : SOM_DERROTA);
+    if (!anunciando && anuncio_atual(partida) != NULL) som_tocar(SOM_ALERTA);
 
     petisco_atualizar_lista(&partida->petiscos, passo);
     tratar_entrada(partida, mouse);
@@ -518,7 +542,7 @@ Pontuacao partida_pontuacao(const Partida *partida)
     return p;
 }
 
-/* desenhar_carta: desenha a carta i: fundo, forma do cachorro, custo (em
+/* desenhar_carta: desenha a carta i: fundo, retrato do cachorro, custo (em
  * vermelho se não der para comprar), sombra de recarga que encolhe com o
  * tempo e borda verde se estiver selecionada. */
 static void desenhar_carta(const Partida *partida, int i)
@@ -530,7 +554,7 @@ static void desenhar_carta(const Partida *partida, int i)
 
     DrawRectangleRec(r, (Color){ 196, 176, 140, 255 });
     DrawRectangle(r.x, r.y + 38, r.width, 14, (Color){ 90, 64, 48, 255 });
-    cachorro_desenhar(carta->tipo, (Vector2){ r.x + r.width / 2, r.y + 20 }, 13, 0, WHITE);
+    cachorro_desenhar_retrato(carta->tipo, (Vector2){ r.x + r.width / 2, r.y + 19 });
     ui_texto_centro(TextFormat("%d", info->custo), r.x + r.width / 2, r.y + 40, FONTE_PEQUENA, podeComprar ? COR_TEXTO : COR_ALERTA);
 
     if (carta->recarga > 0.0f) DrawRectangle(r.x, r.y, r.width, r.height * carta->recarga / info->recarga, Fade(BLACK, 0.55f));
@@ -690,11 +714,19 @@ static void desenhar_mensagem(const Partida *partida)
 }
 
 /* desenhar_anuncio_horda: pouco antes de cada horda (na fase do chefão,
- * quando ela começa), escreve o anúncio em letras grandes no meio do campo. */
+ * quando ela começa), cobre o meio do campo com uma faixa vermelho-escura
+ * de bordas vermelhas e escreve o anúncio em letras grandes, piscando entre
+ * vermelho e branco, para o jogador não deixar passar. */
 static void desenhar_anuncio_horda(const Partida *partida)
 {
-    const char *anuncio = (partida->chefao != NULL) ? chefao_anuncio(partida->chefao) : horda_anuncio(&partida->hordas);
-    if (anuncio != NULL) ui_texto_centro(anuncio, LARGURA_VIRTUAL / 2, 200, FONTE_GRANDE, COR_ALERTA);
+    const char *anuncio = anuncio_atual(partida);
+    if (anuncio == NULL) return;
+
+    bool piscando = fmodf(partida->tempoJogado, 0.4f) < 0.2f;
+    DrawRectangle(0, 186, LARGURA_VIRTUAL, 64, Fade(COR_SANGUE_ESC, 0.8f));
+    DrawRectangle(0, 186, LARGURA_VIRTUAL, 3, COR_ALERTA);
+    DrawRectangle(0, 247, LARGURA_VIRTUAL, 3, COR_ALERTA);
+    ui_texto_centro(anuncio, LARGURA_VIRTUAL / 2, 198, FONTE_GRANDE, piscando ? COR_ALERTA : COR_TEXTO);
 }
 
 /* partida_desenhar: desenha, de trás para a frente, o céu e os prédios atrás
