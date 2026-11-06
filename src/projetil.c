@@ -8,37 +8,47 @@
 
 /* Cada estilo de baba em pixel-art (matrizes de caracteres), voando para a direita. */
 static const char *GOTA[] = {
-    "......###..",
-    "....##aab#.",
-    "..##aaaabb#",
-    "##aaaaaaaa#",
-    "..##caaaaa#",
-    "....##cca#.",
-    "......###..",
+    ".........####..",
+    ".......##aabb#.",
+    ".....##aaaaabb#",
+    "...##aaaaaaaab#",
+    "###aaaaaaaaaaa#",
+    "...##caaaaaaaa#",
+    ".....##ccaaaa#.",
+    ".......##cca#..",
+    ".........###...",
 };
 static const char *BOLHAS[] = {
-    ".....###.",
-    "....#abb#",
-    "###.#aaa#",
-    "#ab#.###.",
-    "#aa#..##.",
-    ".###.#ab#",
-    "......##.",
+    ".......####..",
+    "......#abba#.",
+    "......#aaaa#.",
+    ".###..#caaa#.",
+    "#abb#..####..",
+    "#aaa#........",
+    ".###...###...",
+    "......#ab#...",
+    ".......##....",
 };
 static const char *CRISTAL[] = {
-    "...#...",
-    "..#b#..",
-    ".#bac#.",
-    "#baacc#",
-    ".#acc#.",
-    "..#c#..",
-    "...#...",
+    ".....#.....",
+    "....#b#....",
+    "...#bba#...",
+    "..#bbaac#..",
+    ".#baaaacc#.",
+    "#baaaaaccc#",
+    ".#aaaaacc#.",
+    "..#aaacc#..",
+    "...#acc#...",
+    "....#c#....",
+    ".....#.....",
 };
 static const char *JATO[] = {
-    "........###.",
-    "a.aa.###aab#",
-    ".a..##ccaaa#",
-    "........###.",
+    "............####..",
+    "a..aa..#####aaab#.",
+    "..a..##aaaaaaaabb#",
+    ".a...##ccaaaaaaaa#",
+    "a..aa..#####ccaa#.",
+    "............####..",
 };
 static const char SIMBOLOS[] = "#abc";
 static const Color CORES_BABA[] = { {  70, 110, 130, 255 }, { 205, 235, 245, 255 }, { 255, 255, 255, 255 }, { 150, 195, 215, 255 } };
@@ -51,10 +61,10 @@ typedef struct DesenhoBaba {
 } DesenhoBaba;
 
 static const DesenhoBaba desenhos[TOTAL_ESTILOS_BABA] = {
-    [BABA_GOTA]   = { GOTA,    7, CORES_BABA },
-    [BABA_BOLHAS] = { BOLHAS,  7, CORES_BABA },
-    [BABA_GELADA] = { CRISTAL, 7, CORES_GELO },
-    [BABA_JATO]   = { JATO,    4, CORES_BABA },
+    [BABA_GOTA]   = { GOTA,    9, CORES_BABA },
+    [BABA_BOLHAS] = { BOLHAS,  9, CORES_BABA },
+    [BABA_GELADA] = { CRISTAL, 11, CORES_GELO },
+    [BABA_JATO]   = { JATO,    6, CORES_BABA },
 };
 
 /* projetil_adicionar: aloca uma baba com malloc na posição de disparo e a

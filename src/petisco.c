@@ -6,7 +6,8 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define RAIO_CLIQUE       13.0f
+#define RAIO_CLIQUE       20.0f
+#define ESCALA_PETISCO    2       // cada pixel do biscoito vira 2x2 no campo
 #define LARGURA_BISCOITO  15
 #define ALTURA_BISCOITO   9
 #define TAMANHO_ESTRELA   9
@@ -108,19 +109,23 @@ void petisco_desenhar_biscoito(Vector2 centro, int escala)
     ui_desenhar_pixel_art(BISCOITO, ALTURA_BISCOITO, canto, escala, SIMBOLOS, CORES);
 }
 
-/* petisco_desenhar_lista: desenha cada petisco como o biscoito (com sombra
- * depois que pousa) e, de vez em quando, a estrelinha brilhando na ponta,
- * como no sprite do gerador. Nos últimos 2,5 segundos antes de sumir, ele
- * pisca. */
+/* petisco_desenhar_lista: desenha cada petisco como o biscoito ampliado,
+ * sobre um brilho amarelo que pulsa (para chamar a atenção do jogador), com
+ * sombra depois que pousa e, de vez em quando, a estrelinha brilhando na
+ * ponta, como no sprite do gerador. Nos últimos 2,5 segundos antes de
+ * sumir, ele pisca. */
 void petisco_desenhar_lista(const Petisco *lista, float tempo)
 {
     for (const Petisco *p = lista; p != NULL; p = p->proximo) {
         if (p->tempoNoChao > DURACAO_NO_CHAO - 2.5f && fmodf(tempo, 0.25f) < 0.12f) continue;
 
-        if (p->posicao.y >= p->alvoY) DrawEllipse(p->posicao.x, p->posicao.y + 6, 8, 2, Fade(BLACK, 0.3f));
-        petisco_desenhar_biscoito(p->posicao, 1);
+        float pulso = sinf(tempo * 6.0f + p->alvoY) * 0.5f + 0.5f;
+        DrawCircleV(p->posicao, 17 + pulso * 3, Fade(CORES[4], 0.25f + pulso * 0.2f));
+        DrawCircleLinesV(p->posicao, 17 + pulso * 3, Fade(CORES[4], 0.8f));
+        if (p->posicao.y >= p->alvoY) DrawEllipse(p->posicao.x, p->posicao.y + 11, 14, 3, Fade(BLACK, 0.3f));
+        petisco_desenhar_biscoito(p->posicao, ESCALA_PETISCO);
         if (fmodf(tempo + p->alvoY * 0.01f, 1.2f) < 0.3f) {
-            ui_desenhar_pixel_art(ESTRELA, TAMANHO_ESTRELA, (Vector2){ p->posicao.x + 3, p->posicao.y - 12 }, 1, SIMBOLOS, CORES);
+            ui_desenhar_pixel_art(ESTRELA, TAMANHO_ESTRELA, (Vector2){ p->posicao.x + 6, p->posicao.y - 20 }, ESCALA_PETISCO, SIMBOLOS, CORES);
         }
     }
 }

@@ -3,6 +3,7 @@
 #include "deck.h"
 #include "cenario.h"
 #include "config.h"
+#include "som.h"
 #include "ui.h"
 
 static const Color COR_CARTA = { 196, 176, 140, 255 };
@@ -14,7 +15,7 @@ static const Botao botaoComecar = { { 340, 304, 150, 28 }, "Começar!" };
 /* retangulo_opcao: área da carta da raça i (0 a 9) na grade de 2 x 5. */
 static Rectangle retangulo_opcao(int i)
 {
-    return (Rectangle){ 124.0f + (i % 5) * 80.0f, 118.0f + (i / 5) * 80.0f, 72, 72 };
+    return (Rectangle){ 124.0f + (i % 5) * 80.0f, 106.0f + (i / 5) * 88.0f, 72, 82 };
 }
 
 /* retangulo_espaco: área do espaço i da linha "Seu deck" (0 = Pote de Ração). */
@@ -74,11 +75,14 @@ AcaoDeck deck_atualizar(EscolhaDeck *deck, Vector2 mouse)
     if (!IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) return DECK_NADA;
 
     for (int i = 0; i < TOTAL_RACAS; i++) {
-        if (CheckCollisionPointRec(mouse, retangulo_opcao(i))) alternar_raca(deck, raca_da_opcao(i));
+        if (!CheckCollisionPointRec(mouse, retangulo_opcao(i))) continue;
+        alternar_raca(deck, raca_da_opcao(i));
+        som_tocar(SOM_CARTA);
     }
     for (int i = 0; i < deck->total; i++) {
         if (CheckCollisionPointRec(mouse, retangulo_espaco(i + 1))) {
             remover_do_deck(deck, i);
+            som_tocar(SOM_CARTA);
             break;
         }
     }
@@ -96,13 +100,13 @@ static void desenhar_espacos(const EscolhaDeck *deck)
         TipoCachorro tipo = (i == 0) ? TIPO_POTE_RACAO : deck->escolhidos[i - 1];
 
         DrawRectangleRec(r, preenchido ? COR_CARTA : Fade(BLACK, 0.4f));
-        if (preenchido) cachorro_desenhar(tipo, (Vector2){ r.x + r.width / 2, r.y + 24 }, 13, 0, WHITE);
+        if (preenchido) cachorro_desenhar_retrato(tipo, (Vector2){ r.x + r.width / 2, r.y + r.height / 2 });
         DrawRectangleLinesEx(r, 2, COR_BORDA);
     }
 }
 
-/* desenhar_opcao: carta de uma raça na grade: o desenho em cima e, na faixa
- * de baixo, o nome e o custo. Já no deck, fica escurecida e com borda verde;
+/* desenhar_opcao: carta de uma raça na grade: o cachorro inteiro em tamanho
+ * real (como no campo) em cima e, na faixa de baixo, o nome e o custo. Já no deck, fica escurecida e com borda verde;
  * com o mouse em cima, a borda fica laranja. */
 static void desenhar_opcao(Rectangle r, TipoCachorro tipo, bool noDeck, bool mouseEmCima)
 {
@@ -110,10 +114,10 @@ static void desenhar_opcao(Rectangle r, TipoCachorro tipo, bool noDeck, bool mou
     float centroX = r.x + r.width / 2;
 
     DrawRectangleRec(r, COR_CARTA);
-    DrawRectangle(r.x, r.y + 46, r.width, r.height - 46, COR_FAIXA);
-    cachorro_desenhar(tipo, (Vector2){ centroX, r.y + 23 }, 16, 0, WHITE);
-    ui_texto_centro(info->nome, centroX, r.y + 48, FONTE_PEQUENA, COR_TEXTO);
-    ui_texto_centro(TextFormat("%d", info->custo), centroX, r.y + 60, FONTE_PEQUENA, COR_PETISCO);
+    DrawRectangle(r.x, r.y + 60, r.width, r.height - 60, COR_FAIXA);
+    cachorro_desenhar(tipo, (Vector2){ centroX, r.y + 30 }, RAIO_CACHORRO, 0, WHITE);
+    ui_texto_centro(info->nome, centroX, r.y + 61, FONTE_PEQUENA, COR_TEXTO);
+    ui_texto_centro(TextFormat("%d", info->custo), centroX, r.y + 71, FONTE_PEQUENA, COR_PETISCO);
 
     if (noDeck) DrawRectangleRec(r, Fade(BLACK, 0.45f));
     DrawRectangleLinesEx(r, 2, noDeck ? COR_INFECTADO : (mouseEmCima ? COR_PETISCO : COR_BORDA));
@@ -130,7 +134,7 @@ static void desenhar_dica(const EscolhaDeck *deck, Vector2 mouse)
             texto = TextFormat("%s - %s  |  Custo: %d  |  Recarga: %.1f s", info->nome, info->papel, info->custo, info->recarga);
         }
     }
-    ui_texto_centro(texto, LARGURA_VIRTUAL / 2, 280, FONTE_PEQUENA, COR_TEXTO);
+    ui_texto_centro(texto, LARGURA_VIRTUAL / 2, 284, FONTE_PEQUENA, COR_TEXTO);
 }
 
 /* deck_desenhar: cenário do menu, painel com o título, a linha "Seu deck",

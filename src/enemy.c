@@ -2,6 +2,7 @@
 
 #include "enemy.h"
 #include "config.h"
+#include "som.h"
 #include "ui.h"
 
 #include <math.h>
@@ -29,8 +30,8 @@ const InfoGato *gato_info(TipoGato tipo)
 }
 
 /* gato_adicionar: aloca um gato com malloc, com a vida cheia do tipo, logo
- * depois da borda direita da tela (na rua), e o insere no INÍCIO da lista.
- * Retorna false se faltar memória. */
+ * depois da borda direita da tela (na rua), o insere no INÍCIO da lista e
+ * toca o gemido de zumbi. Retorna false se faltar memória. */
 bool gato_adicionar(Gato **lista, TipoGato tipo, int linha)
 {
     Gato *novo = malloc(sizeof(Gato));
@@ -43,6 +44,7 @@ bool gato_adicionar(Gato **lista, TipoGato tipo, int linha)
     novo->vida = infos[tipo].vidaMaxima;
     novo->proximo = *lista;
     *lista = novo;
+    som_tocar(SOM_ZUMBIDO);
     return true;
 }
 
@@ -93,6 +95,7 @@ static void mover_ou_morder(Gato *gato, Mapa *mapa, float dt)
 
     gato->timerMordida = INTERVALO_MORDIDA;
     alvo->vida -= info->danoMordida;
+    som_tocar(SOM_MORDIDA);
     if (alvo->vida <= 0) mapa_remover(mapa, alvo->linha, alvo->coluna);
 }
 
@@ -109,6 +112,7 @@ bool gato_atualizar_lista(Gato **lista, Mapa *mapa, float dt, int derrotados[])
         Gato *gato = *ligacao;
         if (gato->vida <= 0) {
             derrotados[gato->tipo]++;
+            som_tocar(SOM_GATO_MORRE);
             remover_no(ligacao);
             continue;
         }

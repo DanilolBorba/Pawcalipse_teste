@@ -9,29 +9,31 @@ typedef struct InfoSprite {
     int     quadros;
     int     duracaoMs[MAX_QUADROS];   // tempo de cada quadro (do LEIAME.txt de cada sprite)
     Vector2 origem;                   // ponto do quadro que fica sobre a posição (pés ou base)
+    Rectangle retrato;                // parte do 1º quadro mostrada nas cartas (a cabeça)
 } InfoSprite;
 
 #define PARADO_8_QUADROS  { 120, 120, 120, 120, 120, 120, 120, 120 }   // os cachorros parados (LEIAME_cachorros.txt)
+#define RETRATO_CACHORRO  { 24, 6, 38, 36 }   // a cabeça e a coleira de todos os cachorros
 
 static const InfoSprite infos[TOTAL_SPRITES] = {
     [SPRITE_GATO_PADRAO] = { "assets/sprites/gato_zumbi_padrao/gato_zumbi_padrao_andar_spritesheet.png", 8,
-                             { 160, 140, 140, 200, 180, 140, 140, 160 }, { 32, 58 } },
+                             { 160, 140, 140, 200, 180, 140, 140, 160 }, { 32, 58 }, { 0 } },
     [SPRITE_GATO_CAIXA]  = { "assets/sprites/gato_zumbi_caixa/gato_zumbi_caixa_andar_spritesheet.png", 8,
-                             { 160, 140, 140, 200, 180, 140, 140, 160 }, { 32, 58 } },
+                             { 160, 140, 140, 200, 180, 140, 140, 160 }, { 32, 58 }, { 0 } },
     [SPRITE_GATO_LATA]   = { "assets/sprites/gato_zumbi_lata/gato_zumbi_lata_andar_spritesheet.png", 8,
-                             { 160, 140, 140, 200, 180, 140, 140, 160 }, { 32, 56 } },
+                             { 160, 140, 140, 200, 180, 140, 140, 160 }, { 32, 56 }, { 0 } },
     [SPRITE_GERADOR]     = { "assets/sprites/gerador_petiscos/gerador_petiscos_spritesheet.png", 11,
-                             { 300, 140, 140, 120, 120, 100, 100, 80, 160, 100, 120 }, { 23, 62 } },
-    [SPRITE_BEAGLE]         = { "assets/sprites/beagle/beagle_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
-    [SPRITE_BULLDOG]        = { "assets/sprites/bulldog/bulldog_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
-    [SPRITE_DALMATA]        = { "assets/sprites/dalmata/dalmata_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
-    [SPRITE_HUSKY]          = { "assets/sprites/husky/husky_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
-    [SPRITE_PASTOR_ALEMAO]  = { "assets/sprites/pastor_alemao/pastor_alemao_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
-    [SPRITE_WESTIE]         = { "assets/sprites/westie/westie_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
-    [SPRITE_SAO_BERNARDO]   = { "assets/sprites/sao_bernardo/sao_bernardo_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
-    [SPRITE_DACHSHUND]      = { "assets/sprites/dachshund/dachshund_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
-    [SPRITE_ROTTWEILER]     = { "assets/sprites/rottweiler/rottweiler_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
-    [SPRITE_SHIBA]          = { "assets/sprites/shiba_inu/shiba_inu_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 } },
+                             { 300, 140, 140, 120, 120, 100, 100, 80, 160, 100, 120 }, { 23, 62 }, { 5, 5, 38, 36 } },
+    [SPRITE_BEAGLE]         = { "assets/sprites/beagle/beagle_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 }, RETRATO_CACHORRO },
+    [SPRITE_BULLDOG]        = { "assets/sprites/bulldog/bulldog_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 }, RETRATO_CACHORRO },
+    [SPRITE_DALMATA]        = { "assets/sprites/dalmata/dalmata_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 }, RETRATO_CACHORRO },
+    [SPRITE_HUSKY]          = { "assets/sprites/husky/husky_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 }, RETRATO_CACHORRO },
+    [SPRITE_PASTOR_ALEMAO]  = { "assets/sprites/pastor_alemao/pastor_alemao_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 }, RETRATO_CACHORRO },
+    [SPRITE_WESTIE]         = { "assets/sprites/westie/westie_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 }, RETRATO_CACHORRO },
+    [SPRITE_SAO_BERNARDO]   = { "assets/sprites/sao_bernardo/sao_bernardo_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 }, RETRATO_CACHORRO },
+    [SPRITE_DACHSHUND]      = { "assets/sprites/dachshund/dachshund_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 }, RETRATO_CACHORRO },
+    [SPRITE_ROTTWEILER]     = { "assets/sprites/rottweiler/rottweiler_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 }, RETRATO_CACHORRO },
+    [SPRITE_SHIBA]          = { "assets/sprites/shiba_inu/shiba_inu_parado_spritesheet.png", 8, PARADO_8_QUADROS, { 32, 58 }, RETRATO_CACHORRO },
 };
 
 static Texture2D texturas[TOTAL_SPRITES];   // id 0 = não carregada
@@ -99,4 +101,12 @@ void sprite_desenhar(IdSprite id, int quadro, Vector2 posicao, float escala, Col
     Rectangle destino = { floorf(posicao.x), floorf(posicao.y), TAMANHO_QUADRO * escala, TAMANHO_QUADRO * escala };
     Vector2 origem = { infos[id].origem.x * escala, infos[id].origem.y * escala };
     DrawTexturePro(texturas[id], recorte, destino, origem, 0.0f, tinta);
+}
+
+/* sprite_desenhar_retrato: desenha só o retângulo 'retrato' do 1º quadro, em
+ * escala 1 (sem reduzir, para nenhum pixel sumir), centrado em 'centro'. */
+void sprite_desenhar_retrato(IdSprite id, Vector2 centro, Color tinta)
+{
+    Rectangle r = infos[id].retrato;
+    DrawTextureRec(texturas[id], r, (Vector2){ floorf(centro.x - r.width / 2), floorf(centro.y - r.height / 2) }, tinta);
 }

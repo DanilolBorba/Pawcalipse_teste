@@ -95,3 +95,13 @@ void cachorro_desenhar(TipoCachorro tipo, Vector2 centro, float raio, int quadro
     DrawPoly(centro, lados, raio, info->giro, cor);
     DrawPolyLinesEx(centro, lados, raio, info->giro, 2, ColorTint(ColorBrightness(info->cor, -0.5f), tinta));
 }
+
+/* cachorro_desenhar_retrato: nas cartas, desenha só a cabeça do cachorro (a
+ * tigela, no pote) em tamanho real, centrada em 'centro'. Reduzir o sprite
+ * inteiro faria pixels sumirem (como os dos olhos). Sem o PNG, usa a forma
+ * pequena. */
+void cachorro_desenhar_retrato(TipoCachorro tipo, Vector2 centro)
+{
+    if (sprite_existe(infos[tipo].sprite)) sprite_desenhar_retrato(infos[tipo].sprite, centro, WHITE);
+    else                                   cachorro_desenhar(tipo, centro, 13, 0, WHITE);
+}

@@ -36,5 +36,6 @@ float sprite_duracao_ate(IdSprite id, int quadro);     // segundos do início da
 float sprite_duracao_total(IdSprite id);               // segundos de um ciclo inteiro
 int   sprite_quadro_no_tempo(IdSprite id, float tempo);                                      // quadro a mostrar 'tempo' segundos após o início (em loop)
 void  sprite_desenhar(IdSprite id, int quadro, Vector2 posicao, float escala, Color tinta);  // desenha o quadro com a origem do sprite em 'posicao'
+void  sprite_desenhar_retrato(IdSprite id, Vector2 centro, Color tinta);                      // o retrato do sprite (escala 1), centrado em 'centro'
 
 #endif

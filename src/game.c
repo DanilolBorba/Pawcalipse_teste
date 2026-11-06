@@ -4,6 +4,7 @@
 #include "game.h"
 #include "cenario.h"
 #include "config.h"
+#include "som.h"
 #include "sprite.h"
 #include "ui.h"
 
@@ -24,6 +25,8 @@ static const Botao botoesMenu[TOTAL_BOTOES_MENU] = {
     { { 240, 280, 160, 30 }, "Sair"       },
 };
 static const Botao botaoVoltar = { { 240, 312, 160, 30 }, "Voltar" };
+static const Rectangle DESLIZADOR_MUSICA = { 520, 324, 80, 6 };
+static const Rectangle DESLIZADOR_EFEITOS = { 520, 342, 80, 6 };
 static const Botao botaoContinuar = { { 220, 160, 200, 30 }, "Continuar" };
 static const Botao botaoSairPartida = { { 220, 200, 200, 30 }, "Sair da Partida" };
 
@@ -53,12 +56,14 @@ static void gravar_saves(const Jogo *jogo)
 }
 
 /* iniciar_partida: cria a partida da fase pedida (FASE_TUTORIAL para o
- * tutorial) com o deck escolhido e vai para a tela de jogo. Se faltar
- * memória, fica onde está. */
+ * tutorial) com o deck escolhido, toca o som de início e vai para a tela de
+ * jogo. Se faltar memória, fica onde está. */
 static void iniciar_partida(Jogo *jogo, int fase)
 {
     jogo->partida = partida_criar(fase, jogo->deck.escolhidos);
-    if (jogo->partida != NULL) jogo->estado = ESTADO_JOGANDO;
+    if (jogo->partida == NULL) return;
+    som_tocar(SOM_INICIAR);
+    jogo->estado = ESTADO_JOGANDO;
 }
 
 /* abrir_fase: as fases passam antes pela escolha do deck; o tutorial, que
@@ -123,9 +128,17 @@ static void encerrar_partida(Jogo *jogo)
     jogo->estado = tutorial ? ESTADO_MENU : ESTADO_FASES;
 }
 
-/* atualizar_menu: troca de tela conforme o botão clicado no menu. */
+/* atualizar_menu: troca de tela conforme o botão clicado no menu e trata
+ * os deslizadores de volume da música e dos efeitos (ao soltar o dos
+ * efeitos, toca um som para o jogador ouvir o volume novo). */
 static void atualizar_menu(Jogo *jogo)
 {
+    float musica = jogo->audio.volume, efeitos = som_volume();
+    if (ui_deslizador_atualizar(DESLIZADOR_MUSICA, &musica, jogo->mouse)) audio_definir_volume(&jogo->audio, musica);
+    if (ui_deslizador_atualizar(DESLIZADOR_EFEITOS, &efeitos, jogo->mouse)) som_definir_volume(efeitos);
+    Rectangle folgaEfeitos = { DESLIZADOR_EFEITOS.x - 6, DESLIZADOR_EFEITOS.y - 6, DESLIZADOR_EFEITOS.width + 12, 18 };
+    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(jogo->mouse, folgaEfeitos)) som_tocar(SOM_PETISCO);
+
     if (ui_botao_clicado(&botoesMenu[BOTAO_JOGAR], jogo->mouse))      jogo->estado = ESTADO_SAVES;
     if (ui_botao_clicado(&botoesMenu[BOTAO_TUTORIAL], jogo->mouse))   iniciar_partida(jogo, FASE_TUTORIAL);
     if (ui_botao_clicado(&botoesMenu[BOTAO_INSTRUCOES], jogo->mouse)) jogo->estado = ESTADO_INSTRUCOES;
@@ -133,8 +146,8 @@ static void atualizar_menu(Jogo *jogo)
     if (ui_botao_clicado(&botoesMenu[BOTAO_SAIR], jogo->mouse))       jogo->estado = ESTADO_SAIR;
 }
 
-/* desenhar_menu: cenário, título balançando, subtítulo, botões, versão e o
- * estado da música (tecla M). */
+/* desenhar_menu: cenário, título balançando, subtítulo, botões, versão e,
+ * no canto, os deslizadores de volume (ou "Sem áudio"). */
 static void desenhar_menu(const Jogo *jogo)
 {
     cenario_desenhar_menu(jogo->tempo);
@@ -144,8 +157,12 @@ static void desenhar_menu(const Jogo *jogo)
     for (int i = 0; i < TOTAL_BOTOES_MENU; i++) ui_desenhar_botao(&botoesMenu[i], jogo->mouse);
     ui_texto(VERSAO_JOGO, 6, ALTURA_VIRTUAL - 14, FONTE_PEQUENA, COR_TEXTO);
 
-    const char *som = !jogo->audio.pronto ? "Sem áudio" : (jogo->audio.mudo ? "M: ligar música" : "M: desligar música");
-    ui_texto(som, LARGURA_VIRTUAL - 6 - MeasureText(som, FONTE_PEQUENA), ALTURA_VIRTUAL - 14, FONTE_PEQUENA, COR_TEXTO);
+    if (!jogo->audio.pronto) {
+        ui_texto("Sem áudio", LARGURA_VIRTUAL - 6 - MeasureText("Sem áudio", FONTE_PEQUENA), ALTURA_VIRTUAL - 14, FONTE_PEQUENA, COR_TEXTO);
+        return;
+    }
+    ui_desenhar_deslizador(DESLIZADOR_MUSICA, jogo->audio.mudo ? 0.0f : jogo->audio.volume, jogo->audio.mudo ? "Mudo (M)" : "Música");
+    ui_desenhar_deslizador(DESLIZADOR_EFEITOS, som_volume(), "Efeitos");
 }
 
 /* retangulo_save: área do cartão do save i. */
@@ -257,6 +274,7 @@ static void atualizar_fases(Jogo *jogo)
 
     for (int f = 0; f < jogo->saves[jogo->saveAtual].faseLiberada; f++) {
         if (CheckCollisionPointCircle(jogo->mouse, posicao_fase(f), RAIO_FASE)) {
+            som_tocar(SOM_CLIQUE);
             abrir_fase(jogo, f + 1);
             return;
         }
@@ -471,8 +489,8 @@ static void desenhar_pausa(const Jogo *jogo)
 
 /* jogo_criar: aloca o jogo com malloc, cria a tela virtual com filtro POINT
  * (ao ampliar, cada pixel vira um bloco, sem borrar), carrega os sprites, lê
- * os saves do arquivo e começa a música. Retorna o ponteiro, ou NULL se
- * faltar memória. */
+ * os saves do arquivo, começa a música e carrega os efeitos sonoros. Retorna
+ * o ponteiro, ou NULL se faltar memória. */
 Jogo *jogo_criar(void)
 {
     Jogo *jogo = malloc(sizeof(Jogo));
@@ -492,6 +510,7 @@ Jogo *jogo_criar(void)
     save_carregar_todos(jogo->saves);
     ranking_carregar(&jogo->ranking);
     audio_iniciar(&jogo->audio);
+    som_carregar_todos();
     return jogo;
 }
 
@@ -556,12 +575,13 @@ void jogo_desenhar(const Jogo *jogo)
 }
 
 /* jogo_destruir: se o jogo for fechado durante uma partida, salva o tempo
- * jogado (e a vitória, se já estava na tela de vitória); depois libera a
- * música, os sprites, a tela virtual e o próprio jogo. */
+ * jogado (e a vitória, se já estava na tela de vitória); depois libera os
+ * efeitos sonoros, a música, os sprites, a tela virtual e o próprio jogo. */
 void jogo_destruir(Jogo *jogo)
 {
     if (jogo == NULL) return;
     encerrar_partida(jogo);
+    som_descarregar_todos();
     audio_finalizar(&jogo->audio);
     sprite_descarregar_todos();
     UnloadRenderTexture(jogo->tela);
