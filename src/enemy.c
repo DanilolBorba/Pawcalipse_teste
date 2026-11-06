@@ -198,7 +198,7 @@ static Color tinta_do_gato(const Gato *gato)
     return infos[gato->tipo].tinta;
 }
 
-/* desenhar_gato_formas: desenho provisório, usado se o PNG não existir, com
+/* desenhar_gato_formas: desenho reserva, usado se o PNG não existir, com
  * os pés em 'pes': rabo, corpo, orelhas, cabeça, olhos vermelhos e, se ainda
  * tiver, a caixa (branca) ou a lata (cinza) na cabeça. */
 static void desenhar_gato_formas(const Gato *gato, Vector2 pes, Color tinta)

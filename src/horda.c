@@ -125,7 +125,7 @@ float horda_progresso(const Hordas *hordas)
 const char *horda_anuncio(const Hordas *hordas)
 {
     if (horda_terminou(hordas) || hordas->timerPausa <= 0.0f || hordas->timerPausa > DURACAO_ANUNCIO) return NULL;
-    if (hordas->atual == 0) return "OS GATOS ESTÃO CHEGANDO!";
+    if (hordas->atual == 0) return "LÁ VÊM OS GATOS!";
     if (hordas->atual == HORDAS_POR_FASE - 1) return "ÚLTIMA HORDA!";
     return TextFormat("HORDA %d!", hordas->atual + 1);
 }

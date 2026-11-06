@@ -369,9 +369,10 @@ static void colocar_cachorro(Partida *partida, int linha, int coluna)
     avancar_tutorial(partida, (carta->tipo == TIPO_POTE_RACAO) ? TUTORIAL_POTE : TUTORIAL_CACHORRO);
 }
 
-/* tratar_atalhos_teste: ATALHOS DE TESTE (saem na versão final, Etapa 10),
- * lidos pelo caractere digitado para funcionarem em qualquer teclado: ']' dá
- * PETISCOS_TESTE petiscos e '\' vence a fase na hora. */
+/* tratar_atalhos_teste: ATALHOS DE TESTE, só para desenvolvimento (tirar na
+ * versão entregue ao jogador), lidos pelo caractere digitado para
+ * funcionarem em qualquer teclado: ']' dá PETISCOS_TESTE petiscos e '\'
+ * vence a fase na hora. */
 static void tratar_atalhos_teste(Partida *partida)
 {
     for (int tecla = GetCharPressed(); tecla != 0; tecla = GetCharPressed()) {
@@ -570,8 +571,8 @@ static void desenhar_botao(Rectangle r, bool ativo)
     DrawRectangleLinesEx(r, 2, ativo ? COR_INFECTADO : COR_BORDA);
 }
 
-/* desenhar_ferramentas: os botões da pá e da luva (provisórios, só com o
- * nome e a tecla). A luva mostra um quadradinho por uso que ainda resta e
+/* desenhar_ferramentas: os botões da pá e da luva (ainda sem ícone: o nome
+ * e a tecla). A luva mostra um quadradinho por uso que ainda resta e
  * fica escurecida quando os usos acabam. */
 static void desenhar_ferramentas(const Partida *partida)
 {

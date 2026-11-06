@@ -329,19 +329,19 @@ static void desenhar_instrucoes(const Jogo *jogo)
 {
     static const char *linhas[] = {
         "Os Gatos Zumbis avançam pela direita rumo à sua casa. Defenda-a!",
-        "",
         "- Antes de cada fase, escolha 5 cachorros para o seu deck.",
         "- Clique em uma carta (ou teclas 1 a 6) e depois em um espaço do campo.",
-        "- Cada cachorro custa petiscos (ossos). Você começa com 200.",
-        "- O Pote de Ração gera petiscos. Clique nos ossos para coletá-los.",
-        "- A pá (tecla S) remove um cachorro. O botão direito cancela.",
-        "- A luva (tecla L) muda um cachorro de lugar: só 2 vezes por fase.",
-        "- O botão 2x (tecla V) acelera o jogo.",
+        "- Cada cachorro custa petiscos. Você começa com 200.",
+        "- O Pote de Ração gera petiscos. Clique neles para coletá-los.",
+        "- Pá (S) tira um cachorro; luva (L) o muda de lugar (2 vezes por fase).",
+        "- O botão direito cancela. O botão 2x (tecla V) acelera o jogo.",
         "- Sobreviva às 4 hordas de cada fase. Na 5ª fase, enfrente o chefão:",
         "  os cachorros chegam de graça pela esteira, à esquerda.",
         "- Se um gato chegar à casa, você perde a fase.",
+        "- Vença rápido para fazer mais pontos e entrar no Ranking (Top 10).",
         "",
-        "ESC: pausar     M: música     F11: tela cheia",
+        "ESC: pausar     M: tirar a música     F11: tela cheia",
+        "O volume da música e dos efeitos fica no canto do menu.",
     };
 
     cenario_desenhar_menu(jogo->tempo);

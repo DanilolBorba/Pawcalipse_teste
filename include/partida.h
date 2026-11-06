@@ -83,8 +83,8 @@ typedef struct Partida {
 } Partida;
 
 Partida *partida_criar(int fase, const TipoCachorro deck[TAMANHO_DECK]);  // aloca a partida com o deck (NULL se faltar memória)
-void partida_atualizar(Partida *partida, Vector2 mouse, float dt);  // entrada do jogador, petiscos e recargas
-void partida_desenhar(const Partida *partida, Vector2 mouse);       // campo, barra superior e petiscos
+void partida_atualizar(Partida *partida, Vector2 mouse, float dt);  // avança um frame: cachorros, gatos, hordas, babas, petiscos e entrada
+void partida_desenhar(const Partida *partida, Vector2 mouse);       // campo, gatos, barra superior, esteira e petiscos
 void partida_destruir(Partida *partida);                            // libera a partida e tudo o que ela alocou
 bool partida_eh_tutorial(const Partida *partida);                   // true se for o tutorial
 void partida_adicionar_efeito(Partida *partida, Vector2 centro, float raio, Color cor);  // mostra uma explosão/cura
